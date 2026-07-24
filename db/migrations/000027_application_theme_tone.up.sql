@@ -1,0 +1,1 @@
+ALTER TABLE tenant_settings ADD COLUMN theme_tone text NOT NULL DEFAULT 'forest' CHECK (theme_tone IN ('forest','ocean','indigo','terracotta','slate'));

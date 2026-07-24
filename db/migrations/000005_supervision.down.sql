@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS report_exports;
+DROP TABLE IF EXISTS reviews;

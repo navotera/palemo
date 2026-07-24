@@ -1,0 +1,153 @@
+openapi: 3.1.0
+info:
+  title: NPMS API
+  version: 1.0.0
+  description: Tenant-scoped work management, supervision, and integration API.
+servers:
+  - url: /api/v1
+security:
+  - sessionCookie: []
+  - bearerAuth: []
+paths:
+  /preliminary-note-templates:
+    get:
+      summary: List preliminary note templates
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+  /auth/development-session:
+    post: {security: [], summary: Create local development session, responses: {'200': {$ref: '#/components/responses/Success'}}}
+  /auth/sso:
+    post: {security: [], summary: Exchange an external signed identity for an NPMS session, responses: {'200': {$ref: '#/components/responses/Success'}, '401': {$ref: '#/components/responses/Error'}}}
+  /auth/token:
+    post:
+      security: []
+      summary: Exchange client credentials for a bearer token
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ClientCredentials'}}}}
+      responses: {'200': {$ref: '#/components/responses/Success'}, '401': {$ref: '#/components/responses/Error'}}
+  /auth/me:
+    get: {summary: Current user, responses: {'200': {$ref: '#/components/responses/Success'}}}
+  /auth/logout:
+    post: {summary: End user session, responses: {'200': {$ref: '#/components/responses/Success'}}}
+  /dashboard/summary:
+    get: {summary: Tenant dashboard summary, responses: {'200': {$ref: '#/components/responses/Success'}}}
+  /api-clients:
+    get: {summary: List API clients, responses: {'200': {$ref: '#/components/responses/Success'}}}
+    post:
+      summary: Register API client and return its secret once
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses: {'201': {$ref: '#/components/responses/Success'}, '409': {$ref: '#/components/responses/Error'}}
+  /projects:
+    get: {summary: List tenant projects, responses: {'200': {$ref: '#/components/responses/Success'}}}
+    post:
+      summary: Create project
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CreateProject'}}}}
+      responses: {'201': {$ref: '#/components/responses/Success'}, '409': {$ref: '#/components/responses/Error'}}
+  /tasks:
+    get:
+      summary: List project tasks
+      parameters: [{name: project_id, in: query, required: true, schema: {type: string, format: uuid}}]
+      responses: {'200': {$ref: '#/components/responses/Success'}}
+    post:
+      summary: Create task
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses: {'201': {$ref: '#/components/responses/Success'}}
+  /tasks/{id}:
+    patch:
+      summary: Update or move task
+      parameters: [{$ref: '#/components/parameters/ID'}]
+      responses: {'200': {$ref: '#/components/responses/Success'}}
+  /tasks/{taskID}/checklist:
+    get: {summary: List task checklist, parameters: [{$ref: '#/components/parameters/TaskID'}], responses: {'200': {$ref: '#/components/responses/Success'}}}
+    post:
+      summary: Create checklist item
+      parameters: [{$ref: '#/components/parameters/TaskID'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      responses: {'201': {$ref: '#/components/responses/Success'}}
+  /tasks/{taskID}/checklist/{id}:
+    patch:
+      summary: Toggle checklist item
+      parameters: [{$ref: '#/components/parameters/TaskID'}, {$ref: '#/components/parameters/ID'}]
+      responses: {'200': {$ref: '#/components/responses/Success'}}
+  /time-entries:
+    get: {summary: List current user time entries, responses: {'200': {$ref: '#/components/responses/Success'}}}
+  /time-entries/start:
+    post: {summary: Start task timer, responses: {'201': {$ref: '#/components/responses/Success'}}}
+  /time-entries/stop:
+    post: {summary: Stop task timer, responses: {'200': {$ref: '#/components/responses/Success'}}}
+  /reviews:
+    get: {summary: List reviews, responses: {'200': {$ref: '#/components/responses/Success'}}}
+    post:
+      summary: Request review
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses: {'201': {$ref: '#/components/responses/Success'}}
+  /reviews/{id}:
+    patch: {summary: Decide review, parameters: [{$ref: '#/components/parameters/ID'}], responses: {'200': {$ref: '#/components/responses/Success'}}}
+  /reports/productivity:
+    get:
+      summary: Productivity report or PDF export request
+      parameters: [{name: from, in: query, schema: {type: string, format: date}}, {name: to, in: query, schema: {type: string, format: date}}, {name: format, in: query, schema: {type: string, enum: [pdf]}}]
+      responses: {'200': {$ref: '#/components/responses/Success'}, '202': {$ref: '#/components/responses/Success'}}
+  /reports/productivity.pdf:
+    get: {summary: Download productivity PDF, responses: {'200': {description: PDF document, content: {application/pdf: {schema: {type: string, contentEncoding: binary}}}}}}
+  /notifications:
+    get: {summary: List current user notifications, responses: {'200': {$ref: '#/components/responses/Success'}}}
+    post:
+      summary: Create notification
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses: {'201': {$ref: '#/components/responses/Success'}}
+  /notifications/{id}/read:
+    patch: {summary: Mark notification read, parameters: [{$ref: '#/components/parameters/ID'}], responses: {'200': {$ref: '#/components/responses/Success'}}}
+  /webhooks/subscriptions:
+    get: {summary: List outbound subscriptions, responses: {'200': {$ref: '#/components/responses/Success'}}}
+    post:
+      summary: Subscribe to an outbound event
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses: {'201': {$ref: '#/components/responses/Success'}}
+  /webhooks/subscriptions/{id}:
+    delete: {summary: Disable subscription, parameters: [{$ref: '#/components/parameters/ID'}], responses: {'204': {description: Disabled}}}
+  /webhooks/deliveries:
+    get: {summary: List outbound delivery attempts, responses: {'200': {$ref: '#/components/responses/Success'}}}
+  /integrations/github/links:
+    get: {summary: List repository links, responses: {'200': {$ref: '#/components/responses/Success'}}}
+  /integrations/github/link:
+    post:
+      summary: Link a project to a repository
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      responses: {'201': {$ref: '#/components/responses/Success'}}
+  /integrations/github/webhook:
+    post:
+      security: []
+      summary: Receive a signed GitHub event
+      parameters:
+        - {name: X-GitHub-Event, in: header, required: true, schema: {type: string}}
+        - {name: X-GitHub-Delivery, in: header, required: true, schema: {type: string}}
+        - {name: X-Hub-Signature-256, in: header, required: true, schema: {type: string}}
+      responses: {'200': {$ref: '#/components/responses/Success'}, '401': {$ref: '#/components/responses/Error'}}
+components:
+  securitySchemes:
+    sessionCookie: {type: apiKey, in: cookie, name: npms_session}
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  parameters:
+    IdempotencyKey: {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 1}}
+    ID: {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    TaskID: {name: taskID, in: path, required: true, schema: {type: string, format: uuid}}
+  schemas:
+    ClientCredentials:
+      type: object
+      required: [grant_type, client_id, client_secret]
+      properties: {grant_type: {const: client_credentials}, client_id: {type: string}, client_secret: {type: string}}
+    CreateProject:
+      type: object
+      required: [name, team_id]
+      properties: {name: {type: string}, team_id: {type: string, format: uuid}, parent_project_id: {type: [string, 'null'], format: uuid}, template_id: {type: [string, 'null'], format: uuid}, source: {type: [string, 'null']}, source_ref: {type: [string, 'null']}, metadata: {type: object}}
+    Envelope:
+      type: object
+      required: [data, meta, errors]
+      properties: {data: {}, meta: {type: object, properties: {request_id: {type: string, format: uuid}}}, errors: {type: [array, 'null'], items: {$ref: '#/components/schemas/APIError'}}}
+    APIError: {type: object, required: [code, message], properties: {code: {type: string}, field: {type: string}, message: {type: string}}}
+  responses:
+    Success: {description: Standard response envelope, content: {application/json: {schema: {$ref: '#/components/schemas/Envelope'}}}}
+    Error: {description: Standard error envelope, content: {application/json: {schema: {$ref: '#/components/schemas/Envelope'}}}}
+
+
+

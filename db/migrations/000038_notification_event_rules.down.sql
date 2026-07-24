@@ -1,0 +1,1 @@
+ALTER TABLE notification_delivery_settings DROP COLUMN IF EXISTS event_rules;

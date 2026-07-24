@@ -1,0 +1,14 @@
+ALTER TABLE projects ADD COLUMN simulation_batch_id uuid REFERENCES simulation_batches(id);
+CREATE INDEX projects_simulation_batch_idx ON projects(tenant_id,simulation_batch_id) WHERE simulation_batch_id IS NOT NULL;
+ALTER TABLE tasks ADD COLUMN simulation_batch_id uuid REFERENCES simulation_batches(id);
+CREATE INDEX tasks_simulation_batch_idx ON tasks(tenant_id,simulation_batch_id) WHERE simulation_batch_id IS NOT NULL;
+ALTER TABLE checklist_items ADD COLUMN simulation_batch_id uuid REFERENCES simulation_batches(id);
+CREATE INDEX checklist_items_simulation_batch_idx ON checklist_items(tenant_id,simulation_batch_id) WHERE simulation_batch_id IS NOT NULL;
+ALTER TABLE wiki_pages ADD COLUMN simulation_batch_id uuid REFERENCES simulation_batches(id);
+CREATE INDEX wiki_pages_simulation_batch_idx ON wiki_pages(tenant_id,simulation_batch_id) WHERE simulation_batch_id IS NOT NULL;
+ALTER TABLE meeting_notes ADD COLUMN simulation_batch_id uuid REFERENCES simulation_batches(id);
+CREATE INDEX meeting_notes_simulation_batch_idx ON meeting_notes(tenant_id,simulation_batch_id) WHERE simulation_batch_id IS NOT NULL;
+ALTER TABLE decision_logs ADD COLUMN simulation_batch_id uuid REFERENCES simulation_batches(id);
+CREATE INDEX decision_logs_simulation_batch_idx ON decision_logs(tenant_id,simulation_batch_id) WHERE simulation_batch_id IS NOT NULL;
+ALTER TABLE lessons_learned ADD COLUMN simulation_batch_id uuid REFERENCES simulation_batches(id);
+CREATE INDEX lessons_learned_simulation_batch_idx ON lessons_learned(tenant_id,simulation_batch_id) WHERE simulation_batch_id IS NOT NULL;

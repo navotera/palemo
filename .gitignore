@@ -1,0 +1,15 @@
+.env
+.idea/
+.vscode/
+.DS_Store
+bin/
+coverage.out
+web/node_modules/
+web/dist/
+*.log
+tmp/
+.codex/
+.gocache/
+backend/vendor/
+backend/storage/logs/
+

@@ -1,0 +1,4 @@
+ALTER TABLE wiki_pages ADD COLUMN IF NOT EXISTS knowledge_source_mode text NOT NULL DEFAULT 'internal' CHECK (knowledge_source_mode IN ('internal','external'));
+ALTER TABLE meeting_notes ADD COLUMN IF NOT EXISTS knowledge_source_mode text NOT NULL DEFAULT 'internal' CHECK (knowledge_source_mode IN ('internal','external'));
+ALTER TABLE decision_logs ADD COLUMN IF NOT EXISTS knowledge_source_mode text NOT NULL DEFAULT 'internal' CHECK (knowledge_source_mode IN ('internal','external'));
+ALTER TABLE lessons_learned ADD COLUMN IF NOT EXISTS knowledge_source_mode text NOT NULL DEFAULT 'internal' CHECK (knowledge_source_mode IN ('internal','external'));

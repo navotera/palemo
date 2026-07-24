@@ -1,0 +1,6 @@
+.custom-tag-input-wrap{display:grid;gap:8px}
+.popular-tags>span{display:block;margin-bottom:6px;color:#68786e;font-size:.75rem;font-weight:700}
+.popular-tags>div{display:flex;flex-wrap:wrap;gap:6px}
+.popular-tags button{display:inline-flex;align-items:center;gap:6px;border:1px solid #d4e0d7;border-radius:999px;background:#fff;color:#3f5c49;padding:6px 9px;font-size:.75rem;cursor:pointer}
+.popular-tags button:hover{border-color:#6d9a7b;background:#f0f7f2}
+.popular-tags small{display:grid;min-width:18px;height:18px;place-items:center;border-radius:50%;background:#e4eee7;color:#496653;font-size:.65rem}

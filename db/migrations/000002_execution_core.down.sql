@@ -1,0 +1,10 @@
+DROP MATERIALIZED VIEW IF EXISTS daily_time_totals;
+DROP TABLE IF EXISTS time_entries;
+ALTER TABLE tasks DROP COLUMN IF EXISTS sprint_id;
+ALTER TABLE tasks DROP COLUMN IF EXISTS milestone_id;
+DROP TABLE IF EXISTS sprints;
+DROP TABLE IF EXISTS milestones;
+ALTER TABLE projects DROP COLUMN IF EXISTS template_id;
+ALTER TABLE projects DROP COLUMN IF EXISTS portfolio_id;
+DROP TABLE IF EXISTS project_templates;
+DROP TABLE IF EXISTS portfolios;

@@ -1,0 +1,9 @@
+.git
+.codex
+web/node_modules
+web/dist
+web/*.tsbuildinfo
+backend/vendor
+backend/node_modules
+backend/storage/logs/*
+backend/.env

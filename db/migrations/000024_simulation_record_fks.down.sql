@@ -1,0 +1,14 @@
+DROP INDEX IF EXISTS projects_simulation_batch_idx;
+ALTER TABLE projects DROP COLUMN IF EXISTS simulation_batch_id;
+DROP INDEX IF EXISTS tasks_simulation_batch_idx;
+ALTER TABLE tasks DROP COLUMN IF EXISTS simulation_batch_id;
+DROP INDEX IF EXISTS checklist_items_simulation_batch_idx;
+ALTER TABLE checklist_items DROP COLUMN IF EXISTS simulation_batch_id;
+DROP INDEX IF EXISTS wiki_pages_simulation_batch_idx;
+ALTER TABLE wiki_pages DROP COLUMN IF EXISTS simulation_batch_id;
+DROP INDEX IF EXISTS meeting_notes_simulation_batch_idx;
+ALTER TABLE meeting_notes DROP COLUMN IF EXISTS simulation_batch_id;
+DROP INDEX IF EXISTS decision_logs_simulation_batch_idx;
+ALTER TABLE decision_logs DROP COLUMN IF EXISTS simulation_batch_id;
+DROP INDEX IF EXISTS lessons_learned_simulation_batch_idx;
+ALTER TABLE lessons_learned DROP COLUMN IF EXISTS simulation_batch_id;

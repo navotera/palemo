@@ -1,0 +1,2 @@
+.custom-checklist-entry label>div{display:flex;gap:8px}
+.custom-checklist-entry button{border:1px solid #b9cdbf;border-radius:8px;background:#fff;color:#28523a;padding:8px 12px;font-size:.64rem;font-weight:800;cursor:pointer}

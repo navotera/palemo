@@ -1,0 +1,1 @@
+ALTER TABLE notification_delivery_settings ADD COLUMN event_rules jsonb NOT NULL DEFAULT '{"project_member":[]}'::jsonb;

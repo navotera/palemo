@@ -1,0 +1,11 @@
+.project-create-card{font-size:13px}
+.project-create-card label>span,.project-create-card legend,.activity-head span{font-size:.8rem}
+.project-create-card label>small,.project-create-card small,.activity-head small,.form-section-heading small,.editor-head small{font-size:.75rem;line-height:1.45}
+.project-create-card input,.project-create-card select,.project-create-card textarea,.project-create-card button{font-size:.82rem}
+.form-section-heading strong,.checklist-builder-head strong,.activity-tree-head strong{font-size:.9rem}
+.checklist-source-options strong,.project-type-option>span,.calendar-period small,.tree-content small{font-size:.76rem!important}
+.checklist-source-options small{font-size:.72rem}
+.calendar-weekdays span,.calendar-day time,.calendar-day button,.calendar-toolbar button,.activity-mode-switch button{font-size:.75rem}
+.calendar-activity strong,.tree-content strong,.editor-head strong{font-size:.82rem}
+.calendar-activity small,.tree-content time,.finish-label,.field-warning{font-size:.72rem}
+.project-tag,.tag-add-button,.custom-type-entry button,.custom-checklist-entry button,.custom-checklist li button{font-size:.75rem}
