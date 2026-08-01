@@ -1,0 +1,14 @@
+@media (min-width:901px){
+ .project-detail-shell .project-review-gate{padding:12px;gap:8px}
+ .project-detail-shell .project-review-gate strong{font-size:.68rem}
+ .project-detail-shell .project-review-gate small{margin-top:2px;line-height:1.35}
+ .project-detail-shell .project-review-gate>button{padding:8px 10px;font-size:.65rem}
+ .project-detail-shell .finish-proofs{padding:12px}
+ .project-detail-shell .finish-proofs>div:first-child p{margin-bottom:8px;line-height:1.35}
+ .project-detail-shell .finish-proofs .proof-mode{margin:6px 0 9px;padding:2px}
+ .project-detail-shell .finish-proofs .proof-mode button{padding:6px 7px;font-size:.58rem}
+ .project-detail-shell .finish-proofs .proof-upload{padding:8px;gap:7px}
+ .project-detail-shell .finish-proofs .proof-upload span{padding:6px 8px;font-size:.57rem}
+ .project-detail-shell .finish-proofs .proof-list{gap:5px;margin-top:8px}
+ .project-detail-shell .finish-proofs .proof-empty{padding:10px}
+}

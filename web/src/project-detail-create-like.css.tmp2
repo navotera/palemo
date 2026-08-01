@@ -1,0 +1,78 @@
+/* Add/Edit-style split with independent column heights. */
+.project-detail-shell .execution-panel {
+  display: block;
+  position: relative;
+  min-height: 520px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #cfe0d4;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.project-detail-shell .execution-head {
+  min-height: 146px;
+  box-sizing: border-box;
+  padding: 24px 28px 20px;
+  border-bottom: 1px solid #e1e9e3;
+}
+
+.project-detail-shell .detail-activity-builder {
+  width: 75%;
+  box-sizing: border-box;
+  min-height: 520px;
+  margin: 0;
+  padding: 28px 34px 34px;
+  border: 0;
+  border-right: 1px solid #e1e9e3;
+  border-radius: 0;
+}
+
+.project-detail-shell .project-review-gate,
+.project-detail-shell .finish-proofs {
+  position: absolute;
+  right: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 25%;
+  margin: 0;
+  border: 0;
+  border-left: 1px solid #e1e9e3;
+  border-radius: 0;
+  background: #f7faf8;
+}
+
+.project-detail-shell .project-review-gate {
+  top: 146px;
+  min-height: 190px;
+  padding: 28px 22px 20px;
+}
+
+.project-detail-shell .finish-proofs {
+  top: 336px;
+  padding: 28px 22px;
+}
+
+@media (max-width: 900px) {
+  .project-detail-shell .execution-panel {
+    min-height: 0;
+  }
+
+  .project-detail-shell .execution-head,
+  .project-detail-shell .detail-activity-builder,
+  .project-detail-shell .project-review-gate,
+  .project-detail-shell .finish-proofs {
+    position: static;
+    width: 100%;
+    min-height: 0;
+    border-right: 0;
+    border-left: 0;
+  }
+
+  .project-detail-shell .detail-activity-builder,
+  .project-detail-shell .project-review-gate,
+  .project-detail-shell .finish-proofs {
+    padding: 22px;
+    border-top: 1px solid #e1e9e3;
+  }
+}

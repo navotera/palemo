@@ -1,0 +1,6 @@
+@media (min-width:901px){
+ .project-detail-shell .execution-panel{grid-template-rows:auto auto}
+ .project-detail-shell .detail-activity-builder{grid-row:2}
+ .project-detail-shell .project-review-gate{grid-row:2}
+ .project-detail-shell .finish-proofs{grid-column:2;grid-row:2;margin-top:132px}
+}

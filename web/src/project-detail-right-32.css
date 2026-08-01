@@ -1,0 +1,5 @@
+@media (min-width:901px){
+ .project-detail-shell .execution-panel{padding-right:calc(32% + 14px)}
+ .project-detail-shell .project-review-gate,.project-detail-shell .finish-proofs{right:24px;width:calc(32% - 14px)}
+ .project-detail-shell .project-review-gate strong,.project-detail-shell .project-review-gate small,.project-detail-shell .finish-proofs p,.project-detail-shell .finish-proofs small{font-size:inherit;line-height:1.35}
+}

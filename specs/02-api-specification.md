@@ -209,9 +209,32 @@ discard draft activities.
 
 ### Division leads
 
+`POST /api/v1/divisions` accepts optional `color` (six-digit hexadecimal, default
+`#3b9a68`) and `icon` (Unicode emoji/icon, maximum 16 characters, default `🏢`). Division
+list responses return both fields. `PATCH /api/v1/divisions/{id}` is admin-only and accepts
+one or more of `name`, `color`, and `icon`.
+`POST /api/v1/teams` also accepts optional `color` and `icon`; `PATCH /api/v1/teams/{id}`
+updates those visual fields or the team name and is restricted to tenant admins.
+
 `PUT /api/v1/divisions/{id}/leads` replaces explicit assignments using
 `{"user_ids":["uuid"]}`. Only tenant admins may call it. `GET /api/v1/divisions` returns
 `lead_user_ids`; tenant admins remain implicit responsible people for every division.
+
+### Independent Division and Team membership
+
+`GET /api/v1/divisions` returns each Division with direct `member_ids`, linked `team_ids`,
+and summary `teams`. Division membership is not inferred from Team membership.
+
+```
+PUT /api/v1/divisions/{id}/members   { "member_ids": ["uuid"] }
+PUT /api/v1/teams/{id}/divisions     { "division_ids": ["uuid"] }
+PUT /api/v1/teams/{id}/members       { "member_ids": ["uuid"] }
+```
+
+Arrays are deduplicated and limited to 100 IDs. Referenced records must belong to the
+authenticated tenant. Mutations require admin or manager authorization and emit an audit
+event with before/after ID sets. Team responses include `division_ids` and `member_ids`;
+legacy singular `division_id` remains temporarily for compatibility.
 
 ### API client lifecycle and request history
 ```
@@ -225,3 +248,48 @@ and revokes the key by setting `is_active=false`; it never hard-deletes the clie
 usage history. Revocation records an append-only `audit_events` entry.
 
 Kanban Mode groups draft activities by board_column (todo, in_progress, review, done). POST /api/v1/tasks accepts the optional board_column field and defaults it to todo. Switching Calendar, Tree, and Kanban modes preserves dates, Markdown descriptions, and board state.
+
+### Project detail status and realization
+
+`GET /api/v1/projects/{id}` includes `created_by` and `created_by_name`. The client cannot
+write either field. Project status transitions are commands, not generic project updates:
+
+```
+POST /api/v1/projects/{id}/submit-review
+POST /api/v1/projects/{id}/reopen
+GET/PATCH /api/v1/tasks/{task}/realization
+GET/POST /api/v1/tasks/{task}/notes
+GET /api/v1/projects/{project}/realizations
+```
+
+The two project commands and note creation require `Idempotency-Key`. Finish accepts only
+`planning`, `active`, or `on_hold`; it moves to `review` when reviewers exist and otherwise to `done`.
+Reopen accepts only `review` or `done` and moves to `active`. Generic
+`PATCH /api/v1/projects/{id}` cannot write `status`. Every mutation is transactional,
+tenant-scoped, authorized on the backend, and emits an audit event with before/after state.
+Task note lists are capped at 100 newest entries.
+
+### Knowledge related project
+
+`GET /api/v1/knowledge/drafts` returns at most 50 newest `publication_status=draft`
+records owned by the authenticated user in the authenticated tenant. Ordinary
+`GET /api/v1/knowledge/{kind}` responses contain published records only. Knowledge create
+and update accept `publication_status` (`draft` or `published`); publishing requires title,
+at least one type, and internal content or an external resource. Draft ownership is enforced
+on the backend and administrators do not receive another author's drafts.
+
+Knowledge creation accepts optional `related_project_id`. The referenced project must belong
+to the authenticated tenant. Wiki, meeting, and decision records expose
+`related_project_id`; lessons learned expose the same API field backed by their existing
+`project_id` column. The relation remains available in Knowledge list/detail responses.
+
+### Knowledge media
+```
+POST /api/v1/knowledge/media       multipart field `image`; requires Idempotency-Key
+GET  /api/v1/knowledge/media/{id}
+```
+Knowledge create/update optionally accept `cover_source` (`upload` or `url`) together with
+`cover_url` (max 2,048 characters). `upload` must reference the authenticated tenant's
+`/api/v1/knowledge/media/{uuid}` readback path; `url` must be an HTTP(S) URL. The server does
+not retrieve external cover URLs.
+Uploads accept verified JPEG, PNG, or WebP images up to 5 MB and 6000×6000 pixels. Files use randomized names under tenant-private storage; upload is rate-limited and audited. Readback requires authentication and resolves files only within the authenticated tenant directory.

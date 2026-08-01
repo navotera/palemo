@@ -34,6 +34,11 @@ Jika revision  → entity tetap "in_progress", catatan revisi ditambahkan ke not
 - `PATCH /api/v1/reviews/{id}`
 - `GET /api/v1/reviews?entity_type=&entity_id=`
 
+Project Preliminary Notes provides separate User Note and Reviewer Note tabs. Reviewer Note
+is stored on the project and may only be changed by a user already assigned as that project's
+reviewer; UI visibility or a reviewer assignment submitted in the same request is not sufficient
+authorization. The mutation remains tenant-scoped and audited through project update.
+
 ## Acceptance Criteria
 1. Task tidak bisa berpindah ke status `done` tanpa review approved, jika project/team
    tersebut mengaktifkan `require_review = true` (setting per team, bukan global).

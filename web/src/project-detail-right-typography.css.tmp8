@@ -1,0 +1,3 @@
+/* Final visual alignment: both labels share the same left edge. */
+.project-detail-shell .finish-proofs>div:first-child .eyebrow,
+.project-detail-shell .finish-proofs>div:first-child h3{margin-left:-4px}

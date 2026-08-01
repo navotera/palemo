@@ -1,0 +1,7 @@
+@media (min-width:901px){
+ .project-detail-shell .execution-panel{display:grid;position:relative;grid-template-columns:minmax(0,75%) minmax(0,25%);grid-template-rows:auto auto auto;gap:14px;padding-right:24px;min-height:0}
+ .project-detail-shell .execution-head{grid-column:1/-1;grid-row:1}
+ .project-detail-shell .detail-activity-builder{grid-column:1;grid-row:2 / span 2;width:auto;margin-top:0}
+ .project-detail-shell .project-review-gate{position:static;grid-column:2;grid-row:2;width:auto;margin:0;align-self:start}
+ .project-detail-shell .finish-proofs{position:static;grid-column:2;grid-row:3;width:auto;margin:0;align-self:start}
+}

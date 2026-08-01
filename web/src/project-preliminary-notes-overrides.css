@@ -117,6 +117,8 @@
  gap:14px;
 }
 
+.preliminary-notes-toggle.is-clickable{cursor:pointer}
+
 .preliminary-notes-toggle>div{
  display:flex;
  align-items:center;
@@ -183,3 +185,10 @@
  top:3px;
  background-size:14px 14px;
 }
+
+.preliminary-project-inputs{
+ display:grid;
+ gap:10px;
+}
+
+.preliminary-note-tabs{display:flex;gap:3px}.project-create-card .preliminary-note-tabs button{border:0;border-radius:5px;background:transparent;color:#8a968e;padding:3px 7px;font:700 11px/1.2 Manrope,sans-serif;cursor:pointer}.project-create-card .preliminary-note-tabs button.active{background:transparent;color:var(--tone-text,#17452f)}.project-create-card .reviewer-note-lock{display:block;color:#7b8880;font-size:10px;line-height:1.35}.toast-editor-host.is-readonly .toastui-editor-toolbar,.toast-editor-host.is-readonly .toastui-editor-main,.toast-editor-host.is-readonly .toastui-editor-mode-switch{pointer-events:none}.toast-editor-host.is-readonly .toastui-editor-defaultUI{background:#f6f8f6}.toast-editor-host.is-readonly .toastui-editor-toolbar{opacity:.58}.app-shell[data-ui-mode="dark"] .preliminary-note-tabs button:not(.active){color:#aeb9b2}

@@ -1,0 +1,5 @@
+@media (min-width:901px){
+ .project-detail-shell .project-review-gate,
+ .project-detail-shell .finish-proofs{align-self:start;height:max-content;min-height:0}
+ .project-detail-shell .finish-proofs{grid-row:3}
+}

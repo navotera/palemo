@@ -1,0 +1,89 @@
+/* Project detail uses the same two-column contract as Add/Edit New Project. */
+.project-detail-shell .execution-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(250px, 1fr);
+  grid-template-rows: auto max-content max-content;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #cfe0d4;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.project-detail-shell .execution-head {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  padding: 24px 28px 20px;
+}
+
+.project-detail-shell .detail-activity-builder {
+  grid-column: 1;
+  grid-row: 2 / span 2;
+  width: auto;
+  min-width: 0;
+  margin: 0;
+  padding: 28px 34px 34px;
+  border-top: 1px solid #e1e9e3;
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-radius: 0;
+}
+
+.project-detail-shell .project-review-gate,
+.project-detail-shell .finish-proofs {
+  position: static;
+  grid-column: 2;
+  width: auto;
+  min-width: 0;
+  margin: 0;
+  border-top: 1px solid #e1e9e3;
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 1px solid #e1e9e3;
+  border-radius: 0;
+  background: #f7faf8;
+}
+
+.project-detail-shell .project-review-gate {
+  grid-row: 2;
+  padding: 28px 22px 20px;
+}
+
+.project-detail-shell .finish-proofs {
+  grid-row: 3;
+  padding: 20px 22px 28px;
+}
+
+@media (max-width: 900px) {
+  .project-detail-shell .execution-panel {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+  }
+
+  .project-detail-shell .execution-head,
+  .project-detail-shell .detail-activity-builder,
+  .project-detail-shell .project-review-gate,
+  .project-detail-shell .finish-proofs {
+    grid-column: 1;
+    width: auto;
+  }
+
+  .project-detail-shell .detail-activity-builder {
+    grid-row: 2;
+    padding: 22px;
+  }
+
+  .project-detail-shell .project-review-gate {
+    grid-row: 3;
+    border-left: 0;
+    padding: 22px;
+  }
+
+  .project-detail-shell .finish-proofs {
+    grid-row: 4;
+    border-left: 0;
+    padding: 22px;
+  }
+}

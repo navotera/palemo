@@ -58,7 +58,7 @@ has one canonical API.
   audited.
 
 
-- Knowledge types configure the label, color, order, and active state of the four controlled knowledge submodules. Disabled types are hidden from the Knowledge Management list; their historical content is retained.
+- Knowledge types configure the label, emoji/icon, color, order, and active state of the controlled knowledge submodules. The optional icon is validated server-side, limited to 16 Unicode characters, and displayed consistently in Knowledge Management. Disabled types are hidden from the Knowledge Management list; their historical content is retained.
 
 - Admins and managers may create custom KB types. Slugs are generated server-side and unique per tenant. Custom types use the generic wiki-page content model while remaining isolated by knowledge_type_id.
 

@@ -1,0 +1,6 @@
+@media (min-width:901px){
+ .project-detail-shell .execution-panel{padding-right:calc(15% + 14px)}
+ .project-detail-shell .project-review-gate,.project-detail-shell .finish-proofs{right:24px;width:calc(15% - 14px);padding-left:10px;padding-right:10px}
+ .project-detail-shell .project-review-gate strong,.project-detail-shell .project-review-gate small,.project-detail-shell .finish-proofs p,.project-detail-shell .finish-proofs small{font-size:.5rem;line-height:1.25}
+ .project-detail-shell .project-review-gate>button,.project-detail-shell .finish-proofs button,.project-detail-shell .finish-proofs span{font-size:.5rem;padding:6px 5px}
+}

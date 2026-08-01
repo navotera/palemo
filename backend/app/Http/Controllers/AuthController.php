@@ -46,7 +46,10 @@ class AuthController extends Controller
     private function userPayload(object $user): array
     {
         $tenant = DB::table('tenants')->where('id',$user->tenant_id)->value('name');
-        $team = DB::table('teams')->where('id',$user->team_id)->value('name');
-        return ['id'=>$user->id,'tenant_id'=>$user->tenant_id,'team_id'=>$user->team_id,'name'=>$user->name,'email'=>$user->email,'role'=>$user->role,'tenant'=>$tenant,'team'=>$team,'profile_image_url'=>!empty($user->profile_image_content_type)?'/api/v1/users/'.$user->id.'/profile-image?v='.strtotime((string)$user->updated_at):null];
+        $team = DB::table('teams')->select('name','division_id')->where('tenant_id',$user->tenant_id)->where('id',$user->team_id)->first();
+        $divisionIDs = $user->role === 'admin' ? DB::table('divisions')->where('tenant_id',$user->tenant_id)->pluck('id')->all() : DB::table('division_leads')->where('tenant_id',$user->tenant_id)->where('user_id',$user->id)->pluck('division_id')->all();
+        if ($team?->division_id) $divisionIDs[] = $team->division_id;
+        $divisionIDs = array_values(array_unique($divisionIDs));
+        return ['id'=>$user->id,'tenant_id'=>$user->tenant_id,'team_id'=>$user->team_id,'division_id'=>$team?->division_id,'division_ids'=>$divisionIDs,'name'=>$user->name,'email'=>$user->email,'role'=>$user->role,'tenant'=>$tenant,'team'=>$team?->name,'profile_image_url'=>!empty($user->profile_image_content_type)?'/api/v1/users/'.$user->id.'/profile-image?v='.strtotime((string)$user->updated_at):null];
     }
 }

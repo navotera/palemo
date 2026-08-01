@@ -1,0 +1,4 @@
+@media (min-width:901px){
+ .project-detail-shell .execution-panel{padding-right:calc(30% + 14px)}
+ .project-detail-shell .project-review-gate,.project-detail-shell .finish-proofs{right:24px;width:calc(30% - 14px)}
+}

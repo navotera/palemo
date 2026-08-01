@@ -15,6 +15,29 @@ make dev
 Open `http://localhost:5173`. Laravel runs at `http://localhost:8080`; Vite proxies API and
 health requests without frontend changes.
 
+### Run manually on Windows / Laragon
+
+If GNU Make is unavailable, run the backend and frontend in two separate terminals from
+the repository root.
+
+Terminal 1 — Laravel backend API:
+
+```powershell
+cd C:\laragon\www\Palemo
+php -d extension=pdo_pgsql -d extension=pgsql -S 127.0.0.1:8080 -t backend/public backend/server.php
+```
+
+Terminal 2 — React/Vite frontend:
+
+```powershell
+cd C:\laragon\www\Palemo
+npm --prefix web run dev -- --host 127.0.0.1 --strictPort
+```
+
+Keep both terminals running, open `http://127.0.0.1:5173`, then select
+**Enter development workspace**. The frontend requires the backend API on port `8080`
+to open the dashboard.
+
 Useful commands: `make backend`, `make frontend`, `make test`, `make typecheck`, `make build`,
 `make migrate-down`, and `make fmt`.
 

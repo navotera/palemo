@@ -1,0 +1,9 @@
+@media (min-width:901px){
+ .project-detail-shell .project-review-gate{width:100%;box-sizing:border-box;align-items:stretch;flex-direction:column;gap:12px;padding:16px}
+ .project-detail-shell .project-review-gate>div{width:100%}
+ .project-detail-shell .project-review-gate>button{width:100%}
+ .project-detail-shell .finish-proofs{width:100%;box-sizing:border-box;margin:0;padding:16px}
+ .project-detail-shell .finish-proofs .proof-mode{width:100%;box-sizing:border-box;justify-content:stretch;margin:10px 0 14px}
+ .project-detail-shell .finish-proofs .proof-mode button{flex:1}
+ .project-detail-shell .finish-proofs .proof-link-form{grid-template-columns:1fr}
+}

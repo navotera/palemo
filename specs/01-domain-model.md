@@ -44,8 +44,16 @@ Gunakan nullable foreign key, jangan wajibkan hierarki penuh.
 |---|---|---|
 | id | uuid | PK |
 | tenant_id | uuid | FK |
-| division_id | uuid | FK |
+| division_id | uuid nullable | Legacy primary division retained during compatibility migration; not the canonical membership relation |
 | name | string | |
+
+Division membership and Team participation are independent organizational dimensions:
+
+- `division_members` assigns users directly to one or more Divisions.
+- `team_divisions` assigns a Team to one or more Divisions.
+- A Team may contain many users. A user's legacy `team_id` remains the primary Team used by existing project ownership contracts.
+- Division member lists must be read from `division_members`, never inferred from a Team's users.
+- Team Division lists must be read from `team_divisions`; legacy `teams.division_id` is transitional compatibility data only.
 
 ### 2.4 `users`
 | Field | Tipe | Ket |
@@ -79,10 +87,12 @@ Gunakan nullable foreign key, jangan wajibkan hierarki penuh.
 | tags | string[] | user-defined project labels, deduplicated case-insensitively |
 | preliminary_note_template_id | uuid nullable | FK to the saved preliminary-note source |
 | preliminary_notes | text | editable Markdown/HTML snapshot used at project creation |
+| preliminary_reviewer_notes | text | reviewer-only Markdown notes; writable only by an assigned project reviewer |
 | status | enum | `planning`, `active`, `on_hold`, `review`, `done`, `archived` |
 | template_id | uuid nullable | FK â†’ project_templates, sumber checklist awal |
 | source | string nullable | asal trigger, mis. `api:woocommerce`, `manual` |
 | source_ref | string nullable | ID referensi di sistem sumber (mis. WooCommerce order ID) |
+| created_by | uuid | FK -> users; authenticated creator, never accepted from client input |
 | created_at, updated_at | timestamp | |
 
 Project Definition exposes Project Preliminary Notes. Users may write Markdown directly or
@@ -170,6 +180,11 @@ Struktur serupa `projects` dengan FK berjenjang. `tasks` memiliki tambahan:
 Semua mengikuti pola dasar: `tenant_id`, `team_id` nullable (bisa company-wide), `title`,
 `content` (rich text/markdown), `author_id`, `created_at`, `updated_at`, `tags` (array).
 `wiki_pages` tambahan mendukung `parent_page_id` untuk struktur nested seperti Notion.
+Semua entity Knowledge memiliki `publication_status` (`draft` atau `published`) dan
+`published_at` nullable. Draft hanya dapat dibaca oleh `author_id` dalam tenant yang sama;
+record lama dimigrasikan sebagai published.
+Cover Knowledge disimpan sebagai `cover_source` nullable (`upload` atau `url`) dan
+`cover_url` nullable. Nilai upload menunjuk ke media privat tenant; nilai URL hanya HTTP(S).
 
 ### 2.14 Integration: `api_clients`, `webhook_subscriptions`, `idempotency_keys`
 Detail penuh di `specs/modules/integration-framework.md`.
@@ -194,6 +209,14 @@ review per reviewer; projects without reviewers transition directly to `done`.
 
 Project division participation is derived automatically from the primary responsible team and
 the teams of selected project members. The create UI must not ask users to duplicate this data.
+
+### Project detail execution records
+
+`activity_realizations` stores one optional realized date per task. It is tenant-scoped and
+uses a tenant-aware foreign key to the task. `activity_execution_notes` stores an append-only,
+bounded Markdown realization log per task with authenticated `author_id` and `occurred_at`.
+Both resources are visible and mutable only to administrators/managers, the project creator,
+assigned project people, or users in the project's owning team.
 
 ### Division lead delegation
 

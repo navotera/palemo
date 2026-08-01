@@ -1,0 +1,5 @@
+@media (min-width:901px){
+ .project-detail-shell .project-review-gate{top:82px}
+ .project-detail-shell .finish-proofs{top:205px}
+ .project-detail-shell .finish-proofs,.project-detail-shell .project-review-gate{margin-top:0;margin-bottom:0}
+}

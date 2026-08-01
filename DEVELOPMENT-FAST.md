@@ -9,7 +9,12 @@ make dev
 If GNU Make is unavailable, run these in separate terminals:
 
 ```powershell
+cd C:\laragon\www\Palemo
 php -d extension=pdo_pgsql -d extension=pgsql -S 127.0.0.1:8080 -t backend/public backend/server.php
+```
+
+```powershell
+cd C:\laragon\www\Palemo
 npm --prefix web run dev -- --host 127.0.0.1 --strictPort
 ```
 

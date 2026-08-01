@@ -26,12 +26,13 @@ export type MetadataField = {
 type AiIntegrationSetting={is_enabled:boolean;provider:"openai"|"anthropic"|"gemini"|"custom";model:string|null;base_url:string|null;api_key_configured:boolean;project_data_access:"summary"|"summary_and_activities"|"full_project";auto_report_enabled:boolean;report_frequency:"weekly"|"monthly"|"on_completion";delivery_mode:"review"|"send_to_client"};
 type GithubIntegrationSetting={is_enabled:boolean;api_base_url:string;access_token_configured:boolean;webhook_url:string};
 type NotificationDeliverySetting={provider:"ecopa"|"palemo_smtp";ecopa_base_url:string|null;ecopa_client_id:string|null;ecopa_secret_configured:boolean;smtp_host:string|null;smtp_port:number;smtp_encryption:"tls"|"ssl"|"none";smtp_username:string|null;smtp_password_configured:boolean;smtp_from_email:string|null;smtp_from_name:string|null;event_rules:{project_member:string[]}};
-type WebhookSetting={id:string;event:string;target_url:string;is_active:boolean;consecutive_failures:number;deliveries:number;last_delivery_at:string|null};type GeneralSetting = { knowledge_visible_type_limit: number; workspace_tab_limit: number; theme_tone: string; custom_theme_mode: "solid"|"gradient"; custom_theme_primary: string; custom_theme_secondary: string; custom_theme_angle: number; simulation_loaded: boolean; simulation_records: number };
+type WebhookSetting={id:string;event:string;target_url:string;is_active:boolean;consecutive_failures:number;deliveries:number;last_delivery_at:string|null};type GeneralSetting = { knowledge_visible_type_limit: number; workspace_tab_limit: number; country_code: string; date_format: string; theme_tone: string; custom_theme_mode: "solid"|"gradient"; custom_theme_primary: string; custom_theme_secondary: string; custom_theme_angle: number; simulation_loaded: boolean; simulation_records: number };
 type KnowledgeTypeSetting = {
   id: string;
   slug: string;
   label: string;
   description: string;
+  icon: string | null;
   color: string;
   is_active: boolean;
   is_system: boolean;
@@ -44,16 +45,22 @@ export type DirectoryUser = {
   role: string;
   team_id?: string;
 };
-type OrgTeam = { id: string; name: string };
+type OrgTeam = { id: string; name: string; color: string; icon: string; division_id?: string; division_ids: string[]; member_ids: string[] };
 export type OrgDivision = {
   id: string;
   name: string;
+  color: string;
+  icon: string;
   teams: OrgTeam[];
+  team_ids: string[];
+  member_ids: string[];
   lead_user_ids: string[];
 };
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, { credentials: "include", ...init });
-  const body = (await response.json()) as Envelope<T>;
+  const responseText=await response.text();
+  let body:Envelope<T>;
+  try{body=JSON.parse(responseText) as Envelope<T>}catch{throw new Error(response.ok?"Server returned an invalid response":"Server could not process the request")}
   if (!response.ok)
     throw new Error(body.errors?.[0]?.message ?? "Request failed");
   return body.data;
@@ -62,6 +69,19 @@ const createHeaders = () => ({
   "Content-Type": "application/json",
   "Idempotency-Key": crypto.randomUUID(),
 });
+const settingsMenuIcons:Record<string,string>={
+  general:"M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7.4-3.5a7.8 7.8 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a8 8 0 0 0-1.8-1L14.8 3h-4l-.4 3.1a8 8 0 0 0-1.8 1l-2.4-1-2 3.4 2 1.5a7.8 7.8 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 1.8 1l.4 3.1h4l.4-3.1a8 8 0 0 0 1.8-1l2.4 1 2-3.4-2-1.5a7.8 7.8 0 0 0 .1-1Z",
+  ai:"M12 3 13.4 7.6 18 9l-4.6 1.4L12 15l-1.4-4.6L6 9l4.6-1.4L12 3Zm6 11 .8 2.2L21 17l-2.2.8L18 20l-.8-2.2L15 17l2.2-.8L18 14ZM5 14l.8 2.2L8 17l-2.2.8L5 20l-.8-2.2L2 17l2.2-.8L5 14Z",
+  github:"M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-2c-2.8.6-3.4-1.2-3.4-1.2-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 0 1.6 1.1 1.6 1.1.9 1.6 2.4 1.1 3 .8.1-.7.4-1.1.6-1.4-2.3-.3-4.7-1.1-4.7-5A3.9 3.9 0 0 1 7.7 9c-.1-.3-.5-1.3.1-2.7 0 0 .9-.3 2.8 1.1a9.7 9.7 0 0 1 5.1 0c2-1.4 2.8-1.1 2.8-1.1.6 1.4.2 2.4.1 2.7a3.9 3.9 0 0 1 1 2.7c0 3.9-2.4 4.7-4.7 5 .4.3.7 1 .7 2V21c0 .3.2.6.7.5A10 10 0 0 0 12 2Z",
+  notifications:"M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Zm-8 12h4",
+  webhooks:"M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.1 1.1M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.1-1.1",
+  types:"m12 2 9 5-9 5-9-5 9-5Zm-9 10 9 5 9-5M3 17l9 5 9-5",
+  metadata:"M4 6h10M18 6h2M14 3v6M4 18h2M10 18h10M6 15v6M4 12h4M12 12h8M8 9v6",
+  knowledge:"M4 4.5A2.5 2.5 0 0 1 6.5 2H11v18H6.5A2.5 2.5 0 0 0 4 22V4.5Zm16 0A2.5 2.5 0 0 0 17.5 2H13v18h4.5A2.5 2.5 0 0 1 20 22V4.5Z",
+  users:"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8",
+};
+function SettingsMenuIcon({id}:{id:string}){return <svg className="settings-tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d={settingsMenuIcons[id]}/></svg>}
+const divisionIconOptions=["🏢","🏛️","🏭","🏗️","🏬","💼","👥","🤝","🛠️","⚙️","💻","🧑‍💻","🎨","✏️","📣","📈","📊","💰","🧾","🛡️","🔒","⚖️","📦","🚚","🌐","🧪","💡","🎯","⭐","🌱","🚀","🏆"];
 
 export function SettingsPage({
   divisions,
@@ -110,15 +130,15 @@ export function SettingsPage({
     [divisions],
   );
   const tabs = [
-    ["general", "General", "Workspace preferences"],
-    ["ai", "AI Integration", "Keys and automated reports"],
-    ...(currentUserRole==="admin"?[["github", "GitHub Integration", "Repository and webhook access"]] as const:[]),
-    ["notifications", "Notifications", "Ecopa or Palemo SMTP"],
-    ["webhooks", "Webhooks", "Outbound event delivery"],
-    ["types", "Project Types", "Reusable classifications"],
-    ["metadata", "Project Metadata", "Custom project fields"],
-    ["knowledge", "KB Types", "Knowledge categories"],
-    ["users", "Users & Roles", "People and access"],
+    ["general", "General"],
+    ["ai", "AI Integration"],
+    ...(currentUserRole==="admin"?[["github", "GitHub Integration"]] as const:[]),
+    ["notifications", "Notifications"],
+    ["webhooks", "Webhooks"],
+    ["types", "Project Types"],
+    ["metadata", "Project Metadata"],
+    ["knowledge", "Knowledge Types"],
+    ["users", "Users & Roles"],
   ] as const;
   return (
     <section className="settings-page">
@@ -132,20 +152,22 @@ export function SettingsPage({
       </header>
       <div className="settings-workspace">
         <nav className="settings-tabs" aria-label="Settings sections">
-          {tabs.map(([id, label, detail]) => (
+          {tabs.map(([id, label]) => (
             <button
               key={id}
               className={tab === id ? "active" : ""}
               onClick={() => setTab(id)}
             >
-              <span>{label}</span>
-              <small>{detail}</small>
+              <SettingsMenuIcon id={id}/>
+              <span className="settings-tab-copy"><span>{label}</span></span>
             </button>
           ))}
         </nav>
         <div className="settings-content">
           {tab === "general" && general.data && (
-            <GeneralSettings value={general.data} onSaved={() => cache.invalidateQueries({ queryKey: ["settings", "general"] })} />
+            <div className="general-settings-stack">
+              <GeneralSettings value={general.data} onSaved={() => cache.invalidateQueries({ queryKey: ["settings", "general"] })} />
+            </div>
           )}
           {tab==="ai"&&aiIntegration.data&&<AiIntegrationSettings value={aiIntegration.data} onSaved={()=>cache.invalidateQueries({queryKey:["settings","ai-integration"]})}/>}
           {tab==="github"&&githubIntegration.data&&<GithubIntegrationSettings value={githubIntegration.data} onSaved={()=>cache.invalidateQueries({queryKey:["settings","github-integration"]})}/>}
@@ -552,36 +574,44 @@ function UsersRoles({
   );
 }
 
-export function TeamManagement({divisions,users,onSaved}:{divisions:OrgDivision[];users:DirectoryUser[];onSaved:()=>void}) {
-  const [open,setOpen]=useState(false); const [name,setName]=useState(""); const [divisionID,setDivisionID]=useState(""); const [memberIDs,setMemberIDs]=useState<string[]>([]); const [memberSearch,setMemberSearch]=useState(""); const [memberTeam,setMemberTeam]=useState<{id:string;name:string}|null>(null);
-  const create=useMutation({mutationFn:()=>api<OrgTeam & {division_id:string}>("/api/v1/teams",{method:"POST",headers:createHeaders(),body:JSON.stringify({name:name.trim(),division_id:divisionID,member_ids:memberIDs})}),onSuccess:()=>{setName("");setDivisionID("");setMemberIDs([]);setMemberSearch("");setOpen(false);onSaved()}});
+export function TeamManagement({divisions,users,currentUserRole,onSaved}:{divisions:OrgDivision[];users:DirectoryUser[];currentUserRole:string;onSaved:()=>void}) {
+  const [open,setOpen]=useState(false); const [name,setName]=useState(""); const [divisionIDs,setDivisionIDs]=useState<string[]>([]);const [color,setColor]=useState("#4774b8");const [icon,setIcon]=useState("👥"); const [memberIDs,setMemberIDs]=useState<string[]>([]); const [memberSearch,setMemberSearch]=useState(""); const [memberTeam,setMemberTeam]=useState<{id:string;name:string}|null>(null);const [editTeam,setEditTeam]=useState<(OrgTeam&{division:string})|null>(null);const [editName,setEditName]=useState("");const [editColor,setEditColor]=useState("#4774b8");const [editIcon,setEditIcon]=useState("👥");const [editDivisionIDs,setEditDivisionIDs]=useState<string[]>([]);
+  const create=useMutation({mutationFn:()=>api<OrgTeam>("/api/v1/teams",{method:"POST",headers:createHeaders(),body:JSON.stringify({name:name.trim(),division_ids:divisionIDs,color,icon,member_ids:memberIDs})}),onSuccess:()=>{setName("");setDivisionIDs([]);setColor("#4774b8");setIcon("👥");setMemberIDs([]);setMemberSearch("");setOpen(false);onSaved()}});
+  const edit=useMutation({mutationFn:async()=>{const team=await api<OrgTeam>(`/api/v1/teams/${editTeam?.id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:editName.trim(),color:editColor,icon:editIcon})});await api(`/api/v1/teams/${editTeam?.id}/divisions`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({division_ids:editDivisionIDs})});return team},onSuccess:()=>{setEditTeam(null);onSaved()}});
   const saveMembers=useMutation({mutationFn:()=>api<{id:string;member_ids:string[]}>(`/api/v1/teams/${memberTeam?.id}/members`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({member_ids:memberIDs})}),onSuccess:()=>{setMemberTeam(null);setMemberIDs([]);setMemberSearch("");onSaved()}});
-  const allTeams=divisions.flatMap(division=>division.teams.map(team=>({...team,division:division.name,divisionID:division.id,members:users.filter(user=>user.team_id===team.id)})));
+  const allTeams=[...new Map(divisions.flatMap(division=>division.teams).map(team=>[team.id,{...team,division:divisions.filter(division=>team.division_ids.includes(division.id)).map(division=>division.name).join(", "),members:users.filter(user=>team.member_ids.includes(user.id))}])).values()];
   const teamPager=usePagination(allTeams,10);
   const candidates=users.filter(user=>`${user.name} ${user.email}`.toLocaleLowerCase().includes(memberSearch.toLocaleLowerCase()));
   function toggleMember(id:string,checked:boolean){setMemberIDs(current=>checked?[...new Set([...current,id])]:current.filter(item=>item!==id))}
+  function openEdit(team:OrgTeam&{division:string}){if(currentUserRole!=="admin")return;setEditTeam(team);setEditName(team.name);setEditColor(team.color);setEditIcon(team.icon);setEditDivisionIDs(team.division_ids)}
   function memberPicker(){return <fieldset className="team-member-picker"><legend>Members <small>{memberIDs.length} selected</small></legend><input value={memberSearch} onChange={event=>setMemberSearch(event.target.value)} placeholder="Search users..."/><div>{candidates.map(user=><label key={user.id}><input type="checkbox" checked={memberIDs.includes(user.id)} onChange={event=>toggleMember(user.id,event.target.checked)}/><span><i>{user.name.charAt(0).toUpperCase()}</i><span><strong>{user.name}</strong><small>{user.email} · {user.role}</small></span></span></label>)}{!candidates.length&&<p>No users match this search.</p>}</div></fieldset>}
-  return <SettingsSection title="Teams" description="Manage teams, their parent division, and team members." action="Add team" onAction={()=>{setMemberIDs([]);setMemberSearch("");setOpen(true)}}>
-    <div className="team-settings-list">{teamPager.pageItems.map(team=><div className="team-settings-row" key={team.id}><span className="team-settings-mark">{team.name.charAt(0).toUpperCase()}</span><div className="team-settings-info"><strong>{team.name}</strong><small>{team.division} · {team.members.length} member{team.members.length===1?"":"s"}</small><div className="team-member-list">{team.members.map(member=><span key={member.id} title={`${member.email} · ${member.role}`}><i>{member.name.charAt(0).toUpperCase()}</i>{member.name}</span>)}{!team.members.length&&<em>No members assigned</em>}</div></div><button type="button" className="manage-team-members" onClick={()=>{setMemberTeam({id:team.id,name:team.name});setMemberIDs(team.members.map(member=>member.id));setMemberSearch("")}}>Manage members</button></div>)}{!allTeams.length&&<p className="settings-empty">No teams have been created.</p>}</div><ListPagination page={teamPager.page} pageSize={teamPager.pageSize} total={teamPager.total} onPageChange={teamPager.setPage} onPageSizeChange={teamPager.setPageSize}/>
-    <SettingsDrawer open={open} title="Add team" description="Create a team and select its initial members." onClose={()=>setOpen(false)}><form className="settings-drawer-form" onSubmit={event=>{event.preventDefault();if(name.trim()&&divisionID)create.mutate()}}><label><span>Team name</span><input autoFocus value={name} onChange={event=>setName(event.target.value)} placeholder="e.g. Cybersecurity" maxLength={100} required/></label><label><span>Division</span><select value={divisionID} onChange={event=>setDivisionID(event.target.value)} required><option value="">Select division</option>{divisions.map(division=><option value={division.id} key={division.id}>{division.name}</option>)}</select></label>{memberPicker()}{create.isError&&<p className="settings-error">{create.error.message}</p>}<DrawerActions busy={create.isPending} disabled={!name.trim()||!divisionID} label="Create team" onCancel={()=>setOpen(false)}/></form></SettingsDrawer>
+  return <SettingsSection title="Teams" description="Manage independent teams, their participating divisions, and team members." action="Add team" onAction={()=>{setDivisionIDs([]);setMemberIDs([]);setMemberSearch("");setOpen(true)}}>
+    <div className="team-settings-list">{teamPager.pageItems.map(team=><div className="team-settings-row" key={team.id}><span className="team-settings-mark" style={{background:`${team.color}18`,color:team.color}}>{team.icon}</span><div className="team-settings-info"><strong className={currentUserRole==="admin"?"is-editable":""} onDoubleClick={()=>openEdit(team)} onKeyDown={event=>{if(currentUserRole==="admin"&&event.key==="Enter")openEdit(team)}} tabIndex={currentUserRole==="admin"?0:undefined} role={currentUserRole==="admin"?"button":undefined} title={currentUserRole==="admin"?"Double-click to edit team":undefined}>{team.name}</strong><small>{team.division} · {team.members.length} member{team.members.length===1?"":"s"}</small><div className="team-member-list">{team.members.map(member=><span key={member.id} title={`${member.email} · ${member.role}`}><i>{member.name.charAt(0).toUpperCase()}</i>{member.name}</span>)}{!team.members.length&&<em>No members assigned</em>}</div></div><button type="button" className="manage-team-members" onClick={()=>{setMemberTeam({id:team.id,name:team.name});setMemberIDs(team.members.map(member=>member.id));setMemberSearch("")}}>Manage members</button></div>)}{!allTeams.length&&<p className="settings-empty">No teams have been created.</p>}</div><ListPagination page={teamPager.page} pageSize={teamPager.pageSize} total={teamPager.total} onPageChange={teamPager.setPage} onPageSizeChange={teamPager.setPageSize}/>
+    <SettingsDrawer open={open} title="Add team" description="Create a team, link one or more divisions, and select its initial members." onClose={()=>setOpen(false)}><form className="settings-drawer-form" onSubmit={event=>{event.preventDefault();if(name.trim()&&divisionIDs.length&&icon.trim())create.mutate()}}><label><span>Team name</span><input autoFocus value={name} onChange={event=>setName(event.target.value)} placeholder="e.g. Cybersecurity" maxLength={100} required/></label><fieldset className="team-member-picker"><legend>Participating divisions <small>{divisionIDs.length} selected</small></legend><div>{divisions.map(division=><label key={division.id}><input type="checkbox" checked={divisionIDs.includes(division.id)} onChange={event=>setDivisionIDs(current=>event.target.checked?[...new Set([...current,division.id])]:current.filter(id=>id!==division.id))}/><span><i>{division.icon}</i><span><strong>{division.name}</strong><small>Division</small></span></span></label>)}</div></fieldset><div className="division-visual-fields"><label><span>Color</span><div className="division-color-input"><input type="color" value={color} onChange={event=>setColor(event.target.value)}/><code>{color}</code></div></label><fieldset><legend>Emoji icon</legend><div>{divisionIconOptions.map(option=><button type="button" className={icon===option?"selected":""} aria-label={`Use ${option} icon`} aria-pressed={icon===option} onClick={()=>setIcon(option)} key={option}>{option}</button>)}</div><label className="division-custom-icon"><span>Custom emoji</span><input value={icon} onChange={event=>setIcon(event.target.value)} placeholder="Type or paste an emoji" maxLength={16} required/></label></fieldset></div>{memberPicker()}{create.isError&&<p className="settings-error">{create.error.message}</p>}<DrawerActions busy={create.isPending} disabled={!name.trim()||!divisionIDs.length||!icon.trim()} label="Create team" onCancel={()=>setOpen(false)}/></form></SettingsDrawer>
+    <SettingsDrawer open={!!editTeam} title={`Edit ${editTeam?.name??"team"}`} description="Update the team and its participating divisions." onClose={()=>setEditTeam(null)}><form className="settings-drawer-form" onSubmit={event=>{event.preventDefault();if(editName.trim()&&editIcon.trim()&&editDivisionIDs.length)edit.mutate()}}><label><span>Team name</span><input autoFocus value={editName} onChange={event=>setEditName(event.target.value)} maxLength={100} required/></label><fieldset className="team-member-picker"><legend>Participating divisions <small>{editDivisionIDs.length} selected</small></legend><div>{divisions.map(division=><label key={division.id}><input type="checkbox" checked={editDivisionIDs.includes(division.id)} onChange={event=>setEditDivisionIDs(current=>event.target.checked?[...new Set([...current,division.id])]:current.filter(id=>id!==division.id))}/><span><i>{division.icon}</i><span><strong>{division.name}</strong><small>Division</small></span></span></label>)}</div></fieldset><div className="division-visual-fields"><label><span>Color</span><div className="division-color-input"><input type="color" value={editColor} onChange={event=>setEditColor(event.target.value)}/><code>{editColor}</code></div></label><fieldset><legend>Emoji icon</legend><div>{divisionIconOptions.map(option=><button type="button" className={editIcon===option?"selected":""} aria-label={`Use ${option} icon`} aria-pressed={editIcon===option} onClick={()=>setEditIcon(option)} key={option}>{option}</button>)}</div><label className="division-custom-icon"><span>Custom emoji</span><input value={editIcon} onChange={event=>setEditIcon(event.target.value)} placeholder="Type or paste an emoji" maxLength={16} required/></label></fieldset></div>{edit.isError&&<p className="settings-error">{edit.error.message}</p>}<DrawerActions busy={edit.isPending} disabled={!editName.trim()||!editIcon.trim()||!editDivisionIDs.length} label="Save team" onCancel={()=>setEditTeam(null)}/></form></SettingsDrawer>
     <SettingsDrawer open={!!memberTeam} title={`Members · ${memberTeam?.name??"Team"}`} description="Select the users who belong to this team." onClose={()=>setMemberTeam(null)}><form className="settings-drawer-form" onSubmit={event=>{event.preventDefault();saveMembers.mutate()}}>{memberPicker()}{saveMembers.isError&&<p className="settings-error">{saveMembers.error.message}</p>}<DrawerActions busy={saveMembers.isPending} label="Save members" onCancel={()=>setMemberTeam(null)}/></form></SettingsDrawer>
   </SettingsSection>;
 }export function DivisionManagement({
   divisions,
   users,
+  currentUserRole,
   onSaved,
 }: {
   divisions: OrgDivision[];
   users: DirectoryUser[];
+  currentUserRole: string;
   onSaved: () => void;
 }) {
   const [addOpen, setAddOpen] = useState(false);
   const [leadDivision, setLeadDivision] = useState<OrgDivision | null>(null);
+  const [editDivision,setEditDivision]=useState<OrgDivision|null>(null);
+  const [editName,setEditName]=useState("");const [editColor,setEditColor]=useState("#3b9a68");const [editIcon,setEditIcon]=useState("🏢");
   const [name, setName] = useState("");
-  const [teamName, setTeamName] = useState("");
+  const [color,setColor]=useState("#3b9a68");
+  const [icon,setIcon]=useState("🏢");
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [leadSearch, setLeadSearch] = useState("");
-  const [memberDivision,setMemberDivision]=useState<OrgDivision|null>(null);const [divisionTeamID,setDivisionTeamID]=useState("");const [divisionMemberIDs,setDivisionMemberIDs]=useState<string[]>([]);const [divisionMemberSearch,setDivisionMemberSearch]=useState("");
+  const [memberDivision,setMemberDivision]=useState<OrgDivision|null>(null);const [divisionMemberIDs,setDivisionMemberIDs]=useState<string[]>([]);const [divisionMemberSearch,setDivisionMemberSearch]=useState("");
   const admins = users.filter((user) => user.role === "admin");
   const leadCandidates = users.filter(
     (user) =>
@@ -597,12 +627,14 @@ export function TeamManagement({divisions,users,onSaved}:{divisions:OrgDivision[
         body: JSON.stringify({
           name: name.trim(),
           parent_division_id: null,
-          initial_team_name: teamName.trim(),
+          color,
+          icon,
         }),
       }),
     onSuccess: () => {
       setName("");
-      setTeamName("");
+      setColor("#3b9a68");
+      setIcon("🏢");
       setAddOpen(false);
       onSaved();
     },
@@ -619,17 +651,19 @@ export function TeamManagement({divisions,users,onSaved}:{divisions:OrgDivision[
       onSaved();
     },
   });
-  const addMembers=useMutation({mutationFn:()=>api<{id:string;team_id:string;member_ids:string[]}>(`/api/v1/divisions/${memberDivision?.id}/members`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({team_id:divisionTeamID,member_ids:divisionMemberIDs})}),onSuccess:()=>{setMemberDivision(null);setDivisionTeamID("");setDivisionMemberIDs([]);onSaved()}});
-  function openMembers(division:OrgDivision){setMemberDivision(division);setDivisionTeamID(division.teams[0]?.id??"");setDivisionMemberIDs([]);setDivisionMemberSearch("")}  function openLeads(division: OrgDivision) {
+  const edit=useMutation({mutationFn:()=>api<OrgDivision>(`/api/v1/divisions/${editDivision?.id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:editName.trim(),color:editColor,icon:editIcon})}),onSuccess:()=>{setEditDivision(null);onSaved()}});
+  const addMembers=useMutation({mutationFn:()=>api<{id:string;member_ids:string[]}>(`/api/v1/divisions/${memberDivision?.id}/members`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({member_ids:divisionMemberIDs})}),onSuccess:()=>{setMemberDivision(null);setDivisionMemberIDs([]);onSaved()}});
+  function openMembers(division:OrgDivision){setMemberDivision(division);setDivisionMemberIDs(division.member_ids??[]);setDivisionMemberSearch("")}  function openLeads(division: OrgDivision) {
     setLeadSearch("");
     setSelectedLeads(division.lead_user_ids ?? []);
     setLeadDivision(division);
   }
+  function openEdit(division:OrgDivision){if(currentUserRole!=="admin")return;setEditDivision(division);setEditName(division.name);setEditColor(division.color);setEditIcon(division.icon)}
   const divisionPager = usePagination(divisions, 10);
   return (
     <SettingsSection
-      title="Divisions & Teams"
-      description="Manage organization ownership, teams, and delegated division leads."
+      title="Divisions"
+      description="Manage Division identity, direct members, and delegated leads independently from Teams."
       action="Add division"
       onAction={() => setAddOpen(true)}
     >
@@ -640,20 +674,16 @@ export function TeamManagement({divisions,users,onSaved}:{divisions:OrgDivision[
           );
           return (
             <div className="division-settings-row" key={division.id}>
-              <div className="division-settings-title">
-                <span>{division.name.charAt(0).toUpperCase()}</span>
+              <div className={`division-settings-title ${currentUserRole==="admin"?"is-editable":""}`} onDoubleClick={()=>openEdit(division)} onKeyDown={event=>{if(currentUserRole==="admin"&&event.key==="Enter")openEdit(division)}} tabIndex={currentUserRole==="admin"?0:undefined} role={currentUserRole==="admin"?"button":undefined} title={currentUserRole==="admin"?"Double-click to edit division":undefined}>
+                <span style={{background:`${division.color}18`,color:division.color}}>{division.icon}</span>
                 <div>
                   <strong>{division.name}</strong>
-                  <small>
-                    {division.teams.length} team
-                    {division.teams.length === 1 ? "" : "s"}
-                  </small>
+                  <small>{division.member_ids.length} direct member{division.member_ids.length === 1 ? "" : "s"}</small>
                 </div>
               </div>
               <div className="division-team-chips">
-                {division.teams.map((team) => (
-                  <span key={team.id}>{team.name}</span>
-                ))}
+                {users.filter(user=>division.member_ids.includes(user.id)).map(user=><span key={user.id}>{user.name}</span>)}
+                {!division.member_ids.length&&<small>No direct members</small>}
               </div>
               <div className="division-responsible">
                 <small>Responsible</small>
@@ -670,7 +700,7 @@ export function TeamManagement({divisions,users,onSaved}:{divisions:OrgDivision[
                   ))}
                 </div>
               </div>
-<div className="division-row-actions"><button type="button" className="manage-leads-button" disabled={!division.teams.length} onClick={()=>openMembers(division)}>Add users</button><button type="button" className="manage-leads-button" onClick={() => openLeads(division)}>Manage leads</button></div>
+<div className="division-row-actions"><button type="button" className="manage-leads-button" onClick={()=>openMembers(division)}>Manage members</button><button type="button" className="manage-leads-button" onClick={() => openLeads(division)}>Manage leads</button></div>
             </div>
           );
         })}
@@ -678,7 +708,7 @@ export function TeamManagement({divisions,users,onSaved}:{divisions:OrgDivision[
       <SettingsDrawer
         open={addOpen}
         title="Add division"
-        description="Create a division and optionally its first team."
+        description="Create an independent Division. Team links are managed separately from the Teams tab."
         onClose={() => setAddOpen(false)}
       >
         <form
@@ -697,14 +727,10 @@ export function TeamManagement({divisions,users,onSaved}:{divisions:OrgDivision[
               required
             />
           </label>
-          <label>
-            <span>Initial team</span>
-            <input
-              value={teamName}
-              onChange={(e) => setTeamName(e.target.value)}
-              placeholder="Optional"
-            />
-          </label>
+          <div className="division-visual-fields">
+            <label><span>Color</span><div className="division-color-input"><input type="color" value={color} onChange={event=>setColor(event.target.value)}/><code>{color}</code></div></label>
+            <fieldset><legend>Emoji icon</legend><div>{divisionIconOptions.map(option=><button type="button" className={icon===option?"selected":""} aria-label={`Use ${option} icon`} aria-pressed={icon===option} onClick={()=>setIcon(option)} key={option}>{option}</button>)}</div><label className="division-custom-icon"><span>Custom emoji</span><input value={icon} onChange={event=>setIcon(event.target.value)} placeholder="Type or paste an emoji" maxLength={16} required/></label></fieldset>
+          </div>
           {create.isError && (
             <p className="settings-error">{create.error.message}</p>
           )}
@@ -716,7 +742,8 @@ export function TeamManagement({divisions,users,onSaved}:{divisions:OrgDivision[
           />
         </form>
       </SettingsDrawer>
-      <SettingsDrawer open={!!memberDivision} title={`Add users · ${memberDivision?.name??"Division"}`} description="Choose a team in this division, then select users to assign." onClose={()=>setMemberDivision(null)}><form className="settings-drawer-form" onSubmit={event=>{event.preventDefault();if(divisionTeamID&&divisionMemberIDs.length)addMembers.mutate()}}><label><span>Target team</span><select value={divisionTeamID} onChange={event=>setDivisionTeamID(event.target.value)} required>{memberDivision?.teams.map(team=><option value={team.id} key={team.id}>{team.name}</option>)}</select></label><fieldset className="team-member-picker"><legend>Users <small>{divisionMemberIDs.length} selected</small></legend><input value={divisionMemberSearch} onChange={event=>setDivisionMemberSearch(event.target.value)} placeholder="Search users..."/><div>{users.filter(user=>`${user.name} ${user.email}`.toLowerCase().includes(divisionMemberSearch.toLowerCase())).map(user=><label key={user.id}><input type="checkbox" checked={divisionMemberIDs.includes(user.id)} onChange={event=>setDivisionMemberIDs(current=>event.target.checked?[...new Set([...current,user.id])]:current.filter(id=>id!==user.id))}/><span><i>{user.name.charAt(0).toUpperCase()}</i><span><strong>{user.name}</strong><small>{user.email} · {user.role}</small></span></span></label>)}</div></fieldset>{addMembers.isError&&<p className="settings-error">{addMembers.error.message}</p>}<DrawerActions busy={addMembers.isPending} disabled={!divisionTeamID||!divisionMemberIDs.length} label="Add users" onCancel={()=>setMemberDivision(null)}/></form></SettingsDrawer>      <SettingsDrawer
+      <SettingsDrawer open={!!editDivision} title={`Edit ${editDivision?.name??"division"}`} description="Update the division name and visual identity." onClose={()=>setEditDivision(null)}><form className="settings-drawer-form" onSubmit={event=>{event.preventDefault();if(editName.trim())edit.mutate()}}><label><span>Division name</span><input autoFocus value={editName} onChange={event=>setEditName(event.target.value)} maxLength={100} required/></label><div className="division-visual-fields"><label><span>Color</span><div className="division-color-input"><input type="color" value={editColor} onChange={event=>setEditColor(event.target.value)}/><code>{editColor}</code></div></label><fieldset><legend>Emoji icon</legend><div>{divisionIconOptions.map(option=><button type="button" className={editIcon===option?"selected":""} aria-label={`Use ${option} icon`} aria-pressed={editIcon===option} onClick={()=>setEditIcon(option)} key={option}>{option}</button>)}</div><label className="division-custom-icon"><span>Custom emoji</span><input value={editIcon} onChange={event=>setEditIcon(event.target.value)} placeholder="Type or paste an emoji" maxLength={16} required/></label></fieldset></div>{edit.isError&&<p className="settings-error">{edit.error.message}</p>}<DrawerActions busy={edit.isPending} disabled={!editName.trim()||!editIcon.trim()} label="Save division" onCancel={()=>setEditDivision(null)}/></form></SettingsDrawer>
+      <SettingsDrawer open={!!memberDivision} title={`Members · ${memberDivision?.name??"Division"}`} description="Select users who belong directly to this Division. Team membership is unaffected." onClose={()=>setMemberDivision(null)}><form className="settings-drawer-form" onSubmit={event=>{event.preventDefault();addMembers.mutate()}}><fieldset className="team-member-picker"><legend>Direct Division members <small>{divisionMemberIDs.length} selected</small></legend><input value={divisionMemberSearch} onChange={event=>setDivisionMemberSearch(event.target.value)} placeholder="Search users..."/><div>{users.filter(user=>`${user.name} ${user.email}`.toLowerCase().includes(divisionMemberSearch.toLowerCase())).map(user=><label key={user.id}><input type="checkbox" checked={divisionMemberIDs.includes(user.id)} onChange={event=>setDivisionMemberIDs(current=>event.target.checked?[...new Set([...current,user.id])]:current.filter(id=>id!==user.id))}/><span><i>{user.name.charAt(0).toUpperCase()}</i><span><strong>{user.name}</strong><small>{user.email} · {user.role}</small></span></span></label>)}</div></fieldset>{addMembers.isError&&<p className="settings-error">{addMembers.error.message}</p>}<DrawerActions busy={addMembers.isPending} label="Save Division members" onCancel={()=>setMemberDivision(null)}/></form></SettingsDrawer>      <SettingsDrawer
         open={!!leadDivision}
         title={`Manage ${leadDivision?.name ?? "division"} leads`}
         description="Admins are responsible by default. Select additional users who may add users to this division."
@@ -820,37 +847,38 @@ function WebhookSettings({items,onSaved}:{items:WebhookSetting[];onSaved:()=>voi
  return <article className="settings-section webhook-settings"><header><div><h3>Webhooks</h3><p>Send signed Palemo events to external systems through the existing delivery outbox.</p></div></header><form className="webhook-create" onSubmit={event=>{event.preventDefault();if(url.trim()&&events.length)create.mutate()}}><label><span>Target URL</span><input type="url" value={url} onChange={event=>setUrl(event.target.value)} placeholder="https://hooks.example.com/palemo" required/></label><fieldset><legend>Events</legend><div>{webhookEvents.map(item=><label key={item}><input type="checkbox" checked={events.includes(item)} onChange={event=>setEvents(current=>event.target.checked?[...current,item]:current.filter(value=>value!==item))}/><span>{item}</span></label>)}</div></fieldset><button type="submit" disabled={create.isPending||!url.trim()||!events.length}>{create.isPending?"Creating...":"+ Add webhook"}</button></form>{createdSecrets.length>0&&<div className="webhook-secret"><strong>Copy signing secrets now</strong><small>They will not be shown again.</small>{createdSecrets.map(item=><code key={item.event}>{item.event}: {item.signing_secret}</code>)}</div>}<div className="webhook-list">{webhookPager.pageItems.map(item=><div key={item.id}><div><strong>{item.event}</strong><code>{item.target_url}</code><small>{item.deliveries} deliveries · {item.consecutive_failures} consecutive failures</small></div><span className={item.is_active?"active":"disabled"}>{item.is_active?"Active":"Disabled"}</span><button type="button" onClick={()=>test.mutate(item.id)} disabled={test.isPending}>Test</button><button type="button" onClick={()=>update.mutate({id:item.id,is_active:!item.is_active})}>{item.is_active?"Disable":"Enable"}</button></div>)}{!items.length&&<p>No webhooks configured.</p>}</div><ListPagination page={webhookPager.page} pageSize={webhookPager.pageSize} total={webhookPager.total} onPageChange={webhookPager.setPage} onPageSizeChange={webhookPager.setPageSize}/>{(create.isError||update.isError||test.isError)&&<p className="settings-error">{create.error?.message??update.error?.message??test.error?.message}</p>}<p className="secret-note">Deliveries use HMAC-SHA256 signing and retry asynchronously through the Palemo webhook outbox.</p></article>
 }
 function GeneralSettings({value,onSaved}:{value:GeneralSetting;onSaved:()=>void}) {
-  const cache=useQueryClient();const [limit,setLimit]=useState(value.knowledge_visible_type_limit);const [tabLimit,setTabLimit]=useState(value.workspace_tab_limit);const [themeTone,setThemeTone]=useState(value.theme_tone);const [customMode,setCustomMode]=useState<"solid"|"gradient">(value.custom_theme_mode);const [customPrimary,setCustomPrimary]=useState(value.custom_theme_primary);const [customSecondary,setCustomSecondary]=useState(value.custom_theme_secondary);const [customAngle,setCustomAngle]=useState(value.custom_theme_angle);const toneOptions=[["forest","Forest"],["ocean","Ocean"],["indigo","Indigo"],["terracotta","Terracotta"],["slate","Slate"],["gradient_aurora","Aurora"],["gradient_ocean","Ocean Glow"],["gradient_sunset","Sunset"],["custom","Custom"]] as const;
+  const cache=useQueryClient();const [limit,setLimit]=useState(value.knowledge_visible_type_limit);const [tabLimit,setTabLimit]=useState(value.workspace_tab_limit);const [themeTone,setThemeTone]=useState(value.theme_tone);const [customMode,setCustomMode]=useState<"solid"|"gradient">(value.custom_theme_mode);const [customPrimary,setCustomPrimary]=useState(value.custom_theme_primary);const [customSecondary,setCustomSecondary]=useState(value.custom_theme_secondary);const [customAngle,setCustomAngle]=useState(value.custom_theme_angle);const[country,setCountry]=useState(value.country_code||"ID");const[format,setFormat]=useState(value.date_format||"d F Y");const toneOptions=[["forest","Forest"],["ocean","Ocean"],["indigo","Indigo"],["terracotta","Terracotta"],["slate","Slate"],["gradient_aurora","Aurora"],["gradient_ocean","Ocean Glow"],["gradient_sunset","Sunset"],["custom","Custom"]] as const;const countries=[["ID","Indonesia"],["MY","Malaysia"],["SG","Singapore"],["PH","Philippines"],["TH","Thailand"],["VN","Vietnam"],["AU","Australia"],["JP","Japan"],["GB","United Kingdom"],["US","United States"]] as const;
   const refresh=()=>{onSaved();cache.invalidateQueries({queryKey:["dashboard-summary"]});cache.invalidateQueries({queryKey:["projects"]});cache.invalidateQueries({queryKey:["tasks"]});cache.invalidateQueries({queryKey:["knowledge"]});cache.invalidateQueries({queryKey:["users"]});cache.invalidateQueries({queryKey:["divisions"]})};
-  const save=useMutation({mutationFn:()=>api<GeneralSetting>("/api/v1/settings/general",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({knowledge_visible_type_limit:limit,workspace_tab_limit:tabLimit,theme_tone:themeTone,custom_theme_mode:customMode,custom_theme_primary:customPrimary,custom_theme_secondary:customSecondary,custom_theme_angle:customAngle})}),onSuccess:onSaved});
+  const save=useMutation({mutationFn:()=>api<GeneralSetting>("/api/v1/settings/general",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({knowledge_visible_type_limit:limit,workspace_tab_limit:tabLimit,theme_tone:themeTone,custom_theme_mode:customMode,custom_theme_primary:customPrimary,custom_theme_secondary:customSecondary,custom_theme_angle:customAngle,country_code:country,date_format:format})}),onSuccess:()=>{cache.invalidateQueries({queryKey:["calendar-holidays"]});onSaved()}});
   const load=useMutation({mutationFn:()=>api<{records:number}>("/api/v1/settings/simulation",{method:"POST",headers:createHeaders()}),onSuccess:refresh});
   const remove=useMutation({mutationFn:()=>api<{records:number}>("/api/v1/settings/simulation",{method:"DELETE"}),onSuccess:refresh});
   const busy=load.isPending||remove.isPending;
-  return <article className="settings-section general-settings"><header><div><h3>General</h3><p>Configure shared workspace display preferences.</p></div><button className="settings-add-button" disabled={save.isPending||limit===value.knowledge_visible_type_limit&&tabLimit===value.workspace_tab_limit&&themeTone===value.theme_tone&&customMode===value.custom_theme_mode&&customPrimary===value.custom_theme_primary&&customSecondary===value.custom_theme_secondary&&customAngle===value.custom_theme_angle} onClick={()=>save.mutate()}>{save.isPending?"Saving...":"Save changes"}</button></header><div className="general-setting-row"><div><strong>Maximum open workspace tabs</strong><p>Maximum tabs retained per user. Opening another tab automatically closes the oldest one.</p></div><label><span>Open tabs</span><input type="number" min={1} max={12} value={tabLimit} onChange={event=>setTabLimit(Math.max(1,Math.min(12,Number(event.target.value))))}/></label></div><div className="general-setting-row theme-setting-row"><div><strong>Application color tone</strong><p>Choose a solid or gradient tone for navigation and primary application accents.</p></div><div className="theme-tone-options">{toneOptions.map(([id,label])=><button type="button" className={themeTone===id?"selected":""} onClick={()=>setThemeTone(id)} key={id}><i className={`theme-preview ${id}`}/><span>{label}</span></button>)}</div></div>{themeTone==="custom"&&<div className="custom-theme-editor"><div className="custom-theme-preview" style={{background:customMode==="gradient"?`linear-gradient(${customAngle}deg,${customPrimary},${customSecondary})`:customPrimary}}><span>Live tone preview</span></div><div className="custom-theme-controls"><div className="custom-theme-mode"><button type="button" className={customMode==="solid"?"active":""} onClick={()=>setCustomMode("solid")}>Solid</button><button type="button" className={customMode==="gradient"?"active":""} onClick={()=>setCustomMode("gradient")}>Gradient</button></div><label><span>Primary color</span><input type="color" value={customPrimary} onChange={event=>setCustomPrimary(event.target.value)}/><code>{customPrimary}</code></label>{customMode==="gradient"&&<><label><span>Secondary color</span><input type="color" value={customSecondary} onChange={event=>setCustomSecondary(event.target.value)}/><code>{customSecondary}</code></label><label className="custom-angle"><span>Gradient angle</span><input type="range" min={0} max={360} value={customAngle} onChange={event=>setCustomAngle(Number(event.target.value))}/><code>{customAngle}°</code></label></>}</div></div>}<div className="general-setting-row simulation-setting"><div><strong>Fake data simulation</strong><p>Load sample projects, activities, checklists, and knowledge entries to preview the application. Generated records are tracked separately from real data.</p>{value.simulation_loaded&&<span className="simulation-status"><i/> Active · {value.simulation_records} fake records</span>}</div><div className="simulation-actions"><button disabled={busy||value.simulation_loaded} onClick={()=>load.mutate()}>{load.isPending?"Loading...":"Load fake data simulation"}</button><button className="danger" disabled={busy||!value.simulation_loaded} onClick={()=>{if(window.confirm("Delete all fake simulation data? Real workspace data will not be affected."))remove.mutate()}}>{remove.isPending?"Deleting...":"Delete fake data simulation"}</button></div></div>{(save.isError||load.isError||remove.isError)&&<p className="settings-error">{save.error?.message??load.error?.message??remove.error?.message}</p>}</article>;
+  return <article className="settings-section general-settings"><header><div><h3>General</h3><p>Configure shared workspace display preferences.</p></div><button className="settings-add-button" disabled={save.isPending||limit===value.knowledge_visible_type_limit&&tabLimit===value.workspace_tab_limit&&themeTone===value.theme_tone&&customMode===value.custom_theme_mode&&customPrimary===value.custom_theme_primary&&customSecondary===value.custom_theme_secondary&&customAngle===value.custom_theme_angle&&country===value.country_code&&format===value.date_format} onClick={()=>save.mutate()}>{save.isPending?"Saving...":"Save changes"}</button></header><div className="general-setting-row"><div><strong>Maximum open workspace tabs</strong><p>Maximum tabs retained per user. Opening another tab automatically closes the oldest one.</p></div><label><span>Open tabs</span><input type="number" min={1} max={12} value={tabLimit} onChange={event=>setTabLimit(Math.max(1,Math.min(12,Number(event.target.value))))}/></label></div><div className="general-setting-row theme-setting-row"><div><strong>Application color tone</strong><p>Choose a solid or gradient tone for navigation and primary application accents.</p></div><div className="theme-tone-options">{toneOptions.map(([id,label])=><button type="button" className={themeTone===id?"selected":""} onClick={()=>setThemeTone(id)} key={id}><i className={`theme-preview ${id}`}/><span>{label}</span></button>)}</div></div>{themeTone==="custom"&&<div className="custom-theme-editor"><div className="custom-theme-preview" style={{background:customMode==="gradient"?`linear-gradient(${customAngle}deg,${customPrimary},${customSecondary})`:customPrimary}}><span>Live tone preview</span></div><div className="custom-theme-controls"><div className="custom-theme-mode"><button type="button" className={customMode==="solid"?"active":""} onClick={()=>setCustomMode("solid")}>Solid</button><button type="button" className={customMode==="gradient"?"active":""} onClick={()=>setCustomMode("gradient")}>Gradient</button></div><label><span>Primary color</span><input type="color" value={customPrimary} onChange={event=>setCustomPrimary(event.target.value)}/><code>{customPrimary}</code></label>{customMode==="gradient"&&<><label><span>Secondary color</span><input type="color" value={customSecondary} onChange={event=>setCustomSecondary(event.target.value)}/><code>{customSecondary}</code></label><label className="custom-angle"><span>Gradient angle</span><input type="range" min={0} max={360} value={customAngle} onChange={event=>setCustomAngle(Number(event.target.value))}/><code>{customAngle}°</code></label></>}</div></div>}<div className="general-setting-row calendar-settings-continuation"><div><strong>Country</strong><p>Public holidays from this location are unavailable for activity scheduling. Indonesia is the default.</p></div><label><span>Location</span><select value={country} onChange={event=>setCountry(event.target.value)}>{countries.map(([code,name])=><option value={code} key={code}>{name}</option>)}</select></label></div><div className="general-setting-row calendar-settings-continuation"><div><strong>Default date format</strong><p>Controls how dates are presented throughout the workspace.</p></div><label><span>Format</span><select value={format} onChange={event=>setFormat(event.target.value)}><option value="d F Y">d F Y — 30 July 2026</option><option value="d M Y">d M Y — 30 Jul 2026</option><option value="Y-m-d">Y-m-d — 2026-07-30</option><option value="d/m/Y">d/m/Y — 30/07/2026</option><option value="m/d/Y">m/d/Y — 07/30/2026</option></select></label></div><div className="general-setting-row simulation-setting"><div><strong>Fake data simulation</strong><p>Load sample projects, activities, checklists, and knowledge entries to preview the application. Generated records are tracked separately from real data.</p>{value.simulation_loaded&&<span className="simulation-status"><i/> Active · {value.simulation_records} fake records</span>}</div><div className="simulation-actions"><button disabled={busy||value.simulation_loaded} onClick={()=>load.mutate()}>{load.isPending?"Loading...":"Load fake data simulation"}</button><button className="danger" disabled={busy||!value.simulation_loaded} onClick={()=>{if(window.confirm("Delete all fake simulation data? Real workspace data will not be affected."))remove.mutate()}}>{remove.isPending?"Deleting...":"Delete fake data simulation"}</button></div></div>{(save.isError||load.isError||remove.isError)&&<p className="settings-error">{save.error?.message??load.error?.message??remove.error?.message}</p>}</article>;
 }
 function KnowledgeTypes({items,currentUserRole,visibleLimit,onGeneralSaved,onSaved}:{items:KnowledgeTypeSetting[];currentUserRole:string;visibleLimit:number;onGeneralSaved:()=>void;onSaved:()=>void}) {
-  const [open,setOpen]=useState(false); const [label,setLabel]=useState(""); const [description,setDescription]=useState(""); const [color,setColor]=useState("#3b9a68");
+  const [open,setOpen]=useState(false); const [label,setLabel]=useState(""); const [description,setDescription]=useState(""); const [icon,setIcon]=useState("📚"); const [color,setColor]=useState("#3b9a68");
   const [ordered,setOrdered]=useState(items); const [draggingID,setDraggingID]=useState<string|null>(null); const [overID,setOverID]=useState<string|null>(null);
-  const [editing,setEditing]=useState<KnowledgeTypeSetting|null>(null); const [editLabel,setEditLabel]=useState(""); const [editDescription,setEditDescription]=useState(""); const [editColor,setEditColor]=useState("#3b9a68"); const [limit,setLimit]=useState(visibleLimit);
+  const [editing,setEditing]=useState<KnowledgeTypeSetting|null>(null); const [editLabel,setEditLabel]=useState(""); const [editDescription,setEditDescription]=useState(""); const [editIcon,setEditIcon]=useState("📚"); const [editColor,setEditColor]=useState("#3b9a68"); const [limit,setLimit]=useState(visibleLimit);
   useEffect(()=>setOrdered(items),[items]); useEffect(()=>setLimit(visibleLimit),[visibleLimit]);
   const typePager=usePagination(ordered,10);
   const update=useMutation({mutationFn:({id,payload}:{id:string;payload:Partial<KnowledgeTypeSetting>})=>api<KnowledgeTypeSetting>(`/api/v1/settings/knowledge-types/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)}),onSuccess:onSaved});
   const reorder=useMutation({mutationFn:(next:KnowledgeTypeSetting[])=>Promise.all(next.map((item,index)=>api<KnowledgeTypeSetting>(`/api/v1/settings/knowledge-types/${item.id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({sort_order:(index+1)*10})}))),onSuccess:onSaved});
-  const create=useMutation({mutationFn:()=>api<KnowledgeTypeSetting>("/api/v1/settings/knowledge-types",{method:"POST",headers:createHeaders(),body:JSON.stringify({label:label.trim(),description:description.trim()||null,color})}),onSuccess:()=>{setLabel("");setDescription("");setColor("#3b9a68");setOpen(false);onSaved()}});
-  const edit=useMutation({mutationFn:()=>api<KnowledgeTypeSetting>(`/api/v1/settings/knowledge-types/${editing?.id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({label:editLabel.trim(),description:editDescription.trim()||null,color:editColor})}),onSuccess:()=>{setEditing(null);onSaved()}});
-  const saveLimit=useMutation({mutationFn:()=>api<GeneralSetting>("/api/v1/settings/general",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({knowledge_visible_type_limit:limit})}),onSuccess:onGeneralSaved});
-  function beginEdit(item:KnowledgeTypeSetting){setEditing(item);setEditLabel(item.label);setEditDescription(item.description??"");setEditColor(item.color)}
+  const create=useMutation({mutationFn:()=>api<KnowledgeTypeSetting>("/api/v1/settings/knowledge-types",{method:"POST",headers:createHeaders(),body:JSON.stringify({label:label.trim(),description:description.trim()||null,icon:icon.trim()||null,color})}),onSuccess:()=>{setLabel("");setDescription("");setIcon("📚");setColor("#3b9a68");setOpen(false);onSaved()}});
+  const edit=useMutation({mutationFn:()=>api<KnowledgeTypeSetting>(`/api/v1/settings/knowledge-types/${editing?.id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({label:editLabel.trim(),description:editDescription.trim()||null,icon:editIcon.trim()||null,color:editColor})}),onSuccess:()=>{setEditing(null);onSaved()}});
+  const saveLimit=useMutation({mutationFn:(nextLimit:number)=>api<GeneralSetting>("/api/v1/settings/general",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({knowledge_visible_type_limit:nextLimit})}),onSuccess:onGeneralSaved});
+  const autoSaveLimit=()=>{if(!saveLimit.isPending&&limit!==visibleLimit)saveLimit.mutate(limit)};
+  function beginEdit(item:KnowledgeTypeSetting){setEditing(item);setEditLabel(item.label);setEditDescription(item.description??"");setEditIcon(item.icon??"📚");setEditColor(item.color)}
   function drop(targetID:string){if(!draggingID||draggingID===targetID){setDraggingID(null);setOverID(null);return}const next=[...ordered];const from=next.findIndex(item=>item.id===draggingID);const to=next.findIndex(item=>item.id===targetID);if(from<0||to<0)return;const[moved]=next.splice(from,1);next.splice(to,0,moved);setOrdered(next);setDraggingID(null);setOverID(null);reorder.mutate(next)}
   return <article className="settings-section kb-type-settings">
-    <header><div><h3>Knowledge Base Types</h3><p>Manage categories and their visibility in Knowledge Management.</p></div><button className="settings-add-button" onClick={()=>setOpen(true)}>+ Add KB Type</button></header>
-    <div className="general-setting-row kb-visible-limit"><div><strong>Visible Knowledge Base types</strong><p>Number of types shown directly in Knowledge Management. Remaining types appear under More.</p></div><label><input type="number" aria-label="Visible Knowledge Base types" min={1} max={10} value={limit} onChange={event=>setLimit(Math.max(1,Math.min(10,Number(event.target.value))))}/><button type="button" disabled={saveLimit.isPending||limit===visibleLimit} onClick={()=>saveLimit.mutate()}>{saveLimit.isPending?"Saving...":"Save"}</button></label></div>
+    <header><div><h3>Knowledge Types</h3><p>Manage categories and their visibility in Knowledge Management.</p></div><button className="settings-add-button create-action" onClick={()=>setOpen(true)}>+ Add Knowledge Type</button></header>
+    <div className="general-setting-row kb-visible-limit"><div><strong>Visible Knowledge Base types</strong><p>Number of types shown directly in Knowledge Management. Remaining types appear under More.</p></div><label><input type="number" aria-label="Visible Knowledge Base types" min={1} max={10} value={limit} disabled={saveLimit.isPending} onChange={event=>setLimit(Math.max(1,Math.min(10,Number(event.target.value))))} onBlur={autoSaveLimit} onKeyDown={event=>{if(event.key==="Enter")event.currentTarget.blur()}}/>{(saveLimit.isPending||saveLimit.isError)&&<small aria-live="polite">{saveLimit.isPending?"Saving...":"Could not save"}</small>}</label></div>
     <div className={`kb-type-list ${reorder.isPending?"is-saving-order":""}`}>{typePager.pageItems.map((item,index)=>{const canEdit=currentUserRole==="admin"||(!item.is_system&&currentUserRole==="manager");return <div draggable={currentUserRole==="admin"&&!reorder.isPending} className={`${draggingID===item.id?"dragging":""} ${overID===item.id?"drag-over":""}`} onDragStart={event=>{setDraggingID(item.id);event.dataTransfer.effectAllowed="move"}} onDragEnter={()=>setOverID(item.id)} onDragOver={event=>{if(currentUserRole==="admin"){event.preventDefault();event.dataTransfer.dropEffect="move"}}} onDrop={event=>{event.preventDefault();if(currentUserRole==="admin")drop(item.id)}} onDragEnd={()=>{setDraggingID(null);setOverID(null)}} key={item.id}>
-      <span className="kb-drag-handle" aria-hidden="true"><i/><i/><i/></span><span className="kb-color" style={{background:item.color}}/><div><span className="kb-type-name-row"><strong>{item.label}{item.is_system&&<em>Default</em>}</strong>{canEdit&&<button type="button" className="kb-edit-button" aria-label={`Edit ${item.label}`} title="Edit type" draggable={false} onMouseDown={event=>event.stopPropagation()} onClick={()=>beginEdit(item)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.2-1 10.7-10.7a2.1 2.1 0 0 0-3-3L5.2 16Z"/><path d="m14.8 6.5 3 3"/></svg></button>}</span><small>{item.description}</small><code>{item.slug}</code>
-      {editing?.id===item.id&&<form className={`kb-edit-popover ${index>=ordered.length-2?"open-up":""}`} onSubmit={event=>{event.preventDefault();if(editLabel.trim())edit.mutate()}} onClick={event=>event.stopPropagation()}><header><strong>Edit KB type</strong><button type="button" onClick={()=>setEditing(null)} aria-label="Close edit popup">×</button></header><label><span>Type name</span><input autoFocus value={editLabel} onChange={event=>setEditLabel(event.target.value)} maxLength={50} required/></label><label><span>Description</span><input value={editDescription} onChange={event=>setEditDescription(event.target.value)} maxLength={160}/></label><label className="kb-edit-color"><span>Color</span><input type="color" value={editColor} onChange={event=>setEditColor(event.target.value)}/></label>{edit.isError&&<p className="settings-error">{edit.error.message}</p>}<footer><button type="button" onClick={()=>setEditing(null)}>Cancel</button><button type="submit" className="primary" disabled={edit.isPending||!editLabel.trim()}>{edit.isPending?"Saving...":"Save"}</button></footer></form>}</div>
-      <label className="kb-type-toggle"><input type="checkbox" checked={item.is_active} disabled={!canEdit||update.isPending||reorder.isPending} onChange={event=>update.mutate({id:item.id,payload:{is_active:event.target.checked}})}/><span>{item.is_active?"Active":"Hidden"}</span></label></div>})}</div>
+      <span className="kb-drag-handle" aria-hidden="true"><i/><i/><i/></span><span className="kb-icon" style={{background:`${item.color}18`,color:item.color}}>{item.icon??"📚"}</span><div><span className="kb-type-name-row"><strong>{item.label}{item.is_system&&<em>Default</em>}</strong>{canEdit&&<button type="button" className="kb-edit-button" aria-label={`Edit ${item.label}`} title="Edit type" draggable={false} onMouseDown={event=>event.stopPropagation()} onClick={()=>beginEdit(item)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.2-1 10.7-10.7a2.1 2.1 0 0 0-3-3L5.2 16Z"/><path d="m14.8 6.5 3 3"/></svg></button>}</span><small>{item.description}</small><code>{item.slug}</code>
+      {editing?.id===item.id&&<form className={`kb-edit-popover ${index>=ordered.length-2?"open-up":""}`} onSubmit={event=>{event.preventDefault();if(editLabel.trim())edit.mutate()}} onClick={event=>event.stopPropagation()}><header><strong>Edit Knowledge Type</strong><button type="button" onClick={()=>setEditing(null)} aria-label="Close edit popup">×</button></header><label><span>Type name</span><input autoFocus value={editLabel} onChange={event=>setEditLabel(event.target.value)} maxLength={50} required/></label><label><span>Description</span><input value={editDescription} onChange={event=>setEditDescription(event.target.value)} maxLength={160}/></label><label><span>Emoji or icon</span><input value={editIcon} onChange={event=>setEditIcon(event.target.value)} placeholder="📚" maxLength={16}/></label><label className="kb-edit-color"><span>Color</span><input type="color" value={editColor} onChange={event=>setEditColor(event.target.value)}/></label>{edit.isError&&<p className="settings-error">{edit.error.message}</p>}<footer><button type="submit" className="primary" disabled={edit.isPending||!editLabel.trim()}>{edit.isPending?"Saving...":"Save"}</button></footer></form>}</div>
+      <label className="kb-type-toggle"><input type="checkbox" aria-label={`${item.is_active?"Hide":"Activate"} ${item.label}`} checked={item.is_active} disabled={!canEdit||update.isPending||reorder.isPending} onChange={event=>update.mutate({id:item.id,payload:{is_active:event.target.checked}})}/><span className="kb-toggle-switch" aria-hidden="true"/><span>{item.is_active?"Active":"Hidden"}</span></label></div>})}</div>
     <ListPagination page={typePager.page} pageSize={typePager.pageSize} total={typePager.total} onPageChange={typePager.setPage} onPageSizeChange={typePager.setPageSize}/>
     {reorder.isPending&&<p className="kb-order-status">Saving order...</p>}{(update.isError||create.isError||reorder.isError||saveLimit.isError)&&<p className="settings-error">{update.error?.message??create.error?.message??reorder.error?.message??saveLimit.error?.message}</p>}
-    <SettingsDrawer open={open} title="Add KB type" description="Create a reusable category for organizing knowledge entries." onClose={()=>setOpen(false)}><form className="settings-drawer-form" onSubmit={event=>{event.preventDefault();if(label.trim())create.mutate()}}><label><span>Type name</span><input autoFocus value={label} onChange={event=>setLabel(event.target.value)} placeholder="e.g. Playbooks" required maxLength={50}/></label><label><span>Description</span><input value={description} onChange={event=>setDescription(event.target.value)} placeholder="What belongs in this category?" maxLength={160}/></label><label><span>Color</span><input type="color" value={color} onChange={event=>setColor(event.target.value)}/></label><DrawerActions busy={create.isPending} disabled={!label.trim()} label="Create KB type" onCancel={()=>setOpen(false)}/></form></SettingsDrawer>
+    <SettingsDrawer open={open} title="Add Knowledge Type" description="Create a reusable category for organizing knowledge entries." onClose={()=>setOpen(false)}><form className="settings-drawer-form" onSubmit={event=>{event.preventDefault();if(label.trim())create.mutate()}}><label><span>Type name</span><input autoFocus value={label} onChange={event=>setLabel(event.target.value)} placeholder="e.g. Playbooks" required maxLength={50}/></label><label><span>Description</span><input value={description} onChange={event=>setDescription(event.target.value)} placeholder="What belongs in this category?" maxLength={160}/></label><label><span>Emoji or icon</span><input value={icon} onChange={event=>setIcon(event.target.value)} placeholder="📚" maxLength={16}/></label><label><span>Color</span><input type="color" value={color} onChange={event=>setColor(event.target.value)}/></label><DrawerActions busy={create.isPending} disabled={!label.trim()} label="Create Knowledge Type" onCancel={()=>setOpen(false)}/></form></SettingsDrawer>
   </article>;
 }function SettingsSection({
   title,
@@ -872,7 +900,7 @@ function KnowledgeTypes({items,currentUserRole,visibleLimit,onGeneralSaved,onSav
           <h3>{title}</h3>
           <p>{description}</p>
         </div>
-        <button className="settings-add-button" onClick={onAction}>
+        <button className="settings-add-button create-action" onClick={onAction}>
           + {action}
         </button>
       </header>

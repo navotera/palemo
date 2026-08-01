@@ -9,3 +9,4 @@
 .calendar-activity strong,.tree-content strong,.editor-head strong{font-size:.82rem}
 .calendar-activity small,.tree-content time,.finish-label,.field-warning{font-size:.72rem}
 .project-tag,.tag-add-button,.custom-type-entry button,.custom-checklist-entry button,.custom-checklist li button{font-size:.75rem}
+.project-type-option.selected>span{box-shadow:none}
