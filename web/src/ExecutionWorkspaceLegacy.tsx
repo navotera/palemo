@@ -10,6 +10,7 @@ type Project = {
   display_number?: number | null;
   name: string;
   status: string;
+  project_type?: string;
   metadata?: Record<string, unknown>;
   reviewer_ids?: string[];
   created_by?: string;
@@ -204,6 +205,18 @@ export function ExecutionWorkspace({
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projects"] }),
   });
+  const saveAsTemplate = useMutation({
+    mutationFn: async () => {
+      const name = window.prompt("Template name", current?.name ?? "Project template")?.trim();
+      if (!name) throw new Error("Template name is required.");
+      return api(`/api/v1/project-templates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID() },
+        body: JSON.stringify({ name, source_project_id: selected, project_type: current?.project_type ?? "operational", visibility: "tenant" }),
+      });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["project-templates"] }),
+  });
 
   return (
     <section className="execution-panel detail-board">
@@ -237,6 +250,11 @@ export function ExecutionWorkspace({
             >
               Edit
             </button>
+            {current.status === "done" && (
+              <button type="button" className="edit-project-button" disabled={saveAsTemplate.isPending} onClick={() => saveAsTemplate.mutate()}>
+                {saveAsTemplate.isPending ? "Saving..." : "Save as template"}
+              </button>
+            )}
           </div>
         )}
       </header>

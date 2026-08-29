@@ -12,6 +12,12 @@ export type PlannedActivity = {
 };
 type ActivityMode = "calendar" | "tree" | "kanban";
 type CalendarPeriod = 1 | 3 | 5 | 12;
+const calendarPeriodOptions: Array<{ value: CalendarPeriod; label: string }> = [
+  { value: 1, label: "Current month" },
+  { value: 3, label: "3 months" },
+  { value: 5, label: "5 months" },
+  { value: 12, label: "1 year" },
+];
 type PublicHoliday = { date: string; name: string; local_name: string };
 type HolidayEnvelope = { data: { country_code: string; year: number; items: PublicHoliday[] }; errors: null | Array<{message:string}> };
 type GeneralSettingsEnvelope = { data: { date_format: string }; errors: null | Array<{message:string}> };
@@ -200,15 +206,7 @@ export function ActivityCalendar({
   }
   function save() {
     if (!editingDate || editingDate < today) return;
-    if (markFinish) {
-      onActivitiesChange(
-        activities.filter((item) => item.date !== editingDate),
-      );
-      onFinishDateChange(editingDate);
-      closeEditor();
-      return;
-    }
-    if (!description.trim() || editingDate === finishDate) return;
+    if (!description.trim() || (!markFinish && editingDate === finishDate)) return;
     const markdown = description.trim();
     const next = {
       id: editingID || crypto.randomUUID(),
@@ -222,10 +220,18 @@ export function ActivityCalendar({
         ? activities.map((item) => (item.id === editingID ? next : item))
         : [...activities, next],
     );
+    if (markFinish) onFinishDateChange(editingDate);
     closeEditor();
   }
   function moveActivity(column: PlannedActivity["boardColumn"]) {
     if (readOnly || !draggedActivityID || !column) return;
+    const activity = activities.find((item) => item.id === draggedActivityID);
+    if (column === "done" && activity) {
+      openEdit({ ...activity, boardColumn: "done" });
+      setDraggedActivityID(null);
+      setDropColumn(null);
+      return;
+    }
     onActivitiesChange(
       activities.map((item) =>
         item.id === draggedActivityID ? { ...item, boardColumn: column } : item,
@@ -250,7 +256,7 @@ export function ActivityCalendar({
   const saveDisabled =
     !editingDate ||
     editingDate < today ||
-    (!markFinish && (!description.trim() || editingDate === finishDate)) ||
+    (!description.trim() || (!markFinish && editingDate === finishDate)) ||
     holidayCalendarUnavailable ||
     (mode==="calendar"&&holidays.has(editingDate));
   return (
@@ -333,7 +339,24 @@ export function ActivityCalendar({
               </select>
             </div>
             <div>
-              {periodViews&&<label className="calendar-view-control"><span>View Period</span><select className="calendar-view-period" aria-label="Calendar view period" value={calendarPeriod} onChange={event=>setCalendarPeriod(Number(event.target.value) as CalendarPeriod)}><option value={1}>Current month</option><option value={3}>3 month period</option><option value={5}>5 month period</option><option value={12}>1 year period</option></select></label>}
+              {periodViews && (
+                <div className="calendar-view-control">
+                  <div className="calendar-view-period" role="tablist" aria-label="Calendar view period">
+                    {calendarPeriodOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        role="tab"
+                        aria-selected={calendarPeriod === option.value}
+                        className={calendarPeriod === option.value ? "active" : ""}
+                        onClick={() => setCalendarPeriod(option.value)}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <button
                 type="button"
                 aria-label="Previous month"
@@ -710,7 +733,6 @@ export function ActivityCalendar({
             <span>Status</span>
             <select
               value={editingColumn}
-              disabled={markFinish}
               onChange={(event) =>
                 setEditingColumn(
                   event.target.value as PlannedActivity["boardColumn"],
@@ -727,7 +749,6 @@ export function ActivityCalendar({
             <span>Description</span>
             <textarea
               autoFocus={!editingID}
-              disabled={markFinish}
               rows={7}
               value={description}
               onChange={(event) => setDescription(event.target.value)}

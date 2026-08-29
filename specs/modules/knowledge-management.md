@@ -14,8 +14,17 @@ Semua sub-modul mewarisi pola dasar: `tenant_id`, `team_id` nullable (null = com
 ### Wiki (`wiki_pages`)
 - Mendukung nested page (`parent_page_id`), mirip Notion.
 - Full-text search wajib (Postgres `tsvector` minimal untuk MVP).
-- Versioning: setiap save signifikan menyimpan snapshot (untuk SOP Engine butuh versi
+- Versioning menggunakan snapshot terpisah dari audit trail. Save/autosave pertama pada
+  suatu tanggal membuat satu snapshot otomatis dari kondisi sebelum perubahan pertama;
+  snapshot harian ini immutable dan save/autosave berikutnya tidak mengubahnya.
+  Pengguna dapat membuat snapshot manual tambahan kapan saja melalui **New Version**.
+  Batas satu per hari hanya berlaku untuk snapshot otomatis (untuk SOP Engine butuh versi
   spesifik, lihat `sop-engine.md`).
+- Jika konten yang sudah memiliki minimal 200 karakter berkurang lebih dari 40% dalam satu
+  penyimpanan, sistem membuat recovery snapshot dari kondisi sebelum penghapusan apabila
+  snapshot harian hari itu sudah ada. Recovery snapshot dideduplikasi berdasarkan hash
+  konten dan berlaku 24 jam. Mekanisme ini tidak bergantung pada mouse tracking dan tidak
+  menambah UI baru.
 - Dapat menyimpan `related_project_id` untuk Knowledge yang dibuat dari konteks Project.
   Project harus berasal dari tenant yang sama dan referensinya ditampilkan pada metadata
   serta detail Knowledge.
@@ -40,6 +49,9 @@ Semua sub-modul mewarisi pola dasar: `tenant_id`, `team_id` nullable (null = com
 
 - Setiap knowledge item menyimpan knowledge_types[]. Satu atau lebih tipe aktif dapat dipilih; tipe pertama menjadi tipe utama untuk kompatibilitas endpoint dan tampilan lama.
 - Setiap knowledge item dapat dibatasi ke satu atau lebih divisi tenant melalui `accessible_division_ids`. Array kosong berarti dapat diakses semua divisi. Admin dapat melihat seluruh knowledge untuk administrasi; pengguna lain hanya dapat melihat knowledge global atau knowledge yang mencantumkan divisi dari team mereka maupun divisi yang mereka pimpin. Division ID selalu divalidasi dan difilter di backend berdasarkan tenant aktif. Filter divisi di Knowledge Management hanya ditampilkan untuk admin atau pengguna dengan akses ke lebih dari satu divisi.
+- Knowledge Library menyediakan koleksi **Personal** yang hanya menampilkan Knowledge published milik user aktif dengan seluruh target sharing kosong. Filter ini ditegakkan pada query backend dan tetap tenant-scoped.
+- Setiap knowledge item dapat dibagikan ke `accessible_division_ids`, `accessible_team_ids`, dan `accessible_user_ids`. Array kosong pada ketiga field berarti dapat diakses semua divisi tenant; jika ada target pembagian, pengguna dapat mengakses jika menjadi author, termasuk dalam user target, termasuk dalam team target, atau memiliki akses ke division target. Semua target divalidasi dan difilter berdasarkan tenant aktif.
+- User yang dibagikan secara langsung memiliki permission `View` secara default. Creator atau administrator dapat mendelegasikan permission `Edit` melalui `accessible_editor_user_ids`; setiap editor harus merupakan user yang juga ada di `accessible_user_ids` dan backend wajib menegakkan permission ini saat mengubah konten.
 - Konten internal menerima hingga 1.000.000 karakter. Rich editor melakukan sinkronisasi state secara debounce agar input besar tidak memicu rerender aplikasi pada setiap ketikan, sementara penyimpanan selalu membaca Markdown terbaru langsung dari instance editor. Peringatan performa ditampilkan setelah 50.000 kata dan bukan merupakan hard limit.
 - Editor Knowledge menggunakan Tiptap sebagai WYSIWYG berbasis ProseMirror dengan Markdown sebagai kontrak penyimpanan kompatibilitas. Code block menggunakan Lowlight dengan daftar bahasa terbatas, deteksi bahasa otomatis berbasis pola yang dibatasi, pemilihan manual, syntax highlighting, tombol copy berikon, dan trailing paragraph agar cursor dapat keluar dari code block secara natural. Bahasa disimpan sebagai info string fenced Markdown (contoh: ` ```typescript `) agar konten tetap portabel. Karena dukungan Markdown Tiptap masih berkembang, round-trip struktur yang didukung wajib diuji dan konten yang belum diedit tidak boleh ditulis ulang hanya karena editor dibuka.
 - Toolbar editor menyediakan heading, undo/redo, bold, italic, underline, strikethrough, clear formatting, bullet/numbered/check list, blockquote, horizontal rule, link, table, code block, warna teks, dan gambar eksternal.

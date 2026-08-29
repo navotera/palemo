@@ -182,9 +182,19 @@ Semua mengikuti pola dasar: `tenant_id`, `team_id` nullable (bisa company-wide),
 `wiki_pages` tambahan mendukung `parent_page_id` untuk struktur nested seperti Notion.
 Semua entity Knowledge memiliki `publication_status` (`draft` atau `published`) dan
 `published_at` nullable. Draft hanya dapat dibaca oleh `author_id` dalam tenant yang sama;
-record lama dimigrasikan sebagai published.
+record lama dimigrasikan sebagai published. Semua entity Knowledge juga memiliki akses
+berbagi berbasis `accessible_division_ids`, `accessible_team_ids`, dan `accessible_user_ids`.
 Cover Knowledge disimpan sebagai `cover_source` nullable (`upload` atau `url`) dan
 `cover_url` nullable. Nilai upload menunjuk ke media privat tenant; nilai URL hanya HTTP(S).
+
+`knowledge_versions` menyimpan snapshot Version History secara terpisah dari
+`audit_events`. Snapshot `automatic` memiliki `snapshot_date` dan unik per
+`tenant_id + knowledge_id + snapshot_date`; snapshot ini adalah baseline immutable sebelum
+perubahan pertama hari itu. Snapshot `manual` tidak memiliki `snapshot_date` dan dapat
+dibuat berkali-kali melalui tindakan eksplisit pengguna. Snapshot `recovery` menyimpan hash
+konten dan `expires_at` untuk melindungi kondisi sebelum penghapusan besar tanpa membuat
+snapshot permanen tambahan. Penghapusan snapshot menggunakan `deleted_at`, sedangkan audit
+event tetap append-only.
 
 ### 2.14 Integration: `api_clients`, `webhook_subscriptions`, `idempotency_keys`
 Detail penuh di `specs/modules/integration-framework.md`.

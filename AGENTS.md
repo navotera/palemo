@@ -2,6 +2,16 @@
 
 These instructions apply to the entire repository and must be followed by every AI agent and future development session.
 
+## Windows development server
+
+When working in the Windows/Laragon environment, start the API and frontend together by running the root script:
+
+```powershell
+.\Start-Dev.ps1
+```
+
+Do not start the two development servers with separate ad-hoc commands when this script is available.
+
 ## Required context
 
 Before changing application code, read:

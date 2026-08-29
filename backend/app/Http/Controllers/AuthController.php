@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 
 class AuthController extends Controller
 {
@@ -41,7 +43,63 @@ class AuthController extends Controller
         if(!$user||!$user->profile_image_content_type)return $this->fail($request,'NOT_FOUND','profile image not found',404);
         $content=is_resource($user->profile_image)?stream_get_contents($user->profile_image):$user->profile_image;return response($content,200,['Content-Type'=>$user->profile_image_content_type,'Cache-Control'=>'private, max-age=300','X-Content-Type-Options'=>'nosniff','Content-Disposition'=>'inline']);
     }
-    public function logout(Request $request) { return $this->ok($request, ['signed_out'=>true])->withoutCookie('npms_session'); }
+    public function logout(Request $request) {
+        if (app('impersonate')->isImpersonating()) {
+            app('impersonate')->leave();
+        }
+        Auth::guard('web')->logout();
+        return $this->ok($request, ['signed_out'=>true])->withoutCookie('npms_session');
+    }
+
+    public function impersonationStatus(Request $request)
+    {
+        $principal = $request->attributes->get('principal');
+        $manager = app('impersonate');
+        return $this->ok($request, [
+            'active' => $manager->isImpersonating(),
+            'impersonator_id' => $manager->isImpersonating() ? (string) $manager->getImpersonatorId() : null,
+            'user' => $this->userPayload($principal),
+        ]);
+    }
+
+    public function startImpersonation(Request $request, string $id)
+    {
+        $key = trim((string) $request->header('Idempotency-Key'));
+        $commandPath = 'auth/impersonation/'.$id;
+        $actor = $request->attributes->get('principal');
+        if ($key === '' || strlen($key) > 200) return $this->fail($request, 'VALIDATION_ERROR', 'A valid Idempotency-Key is required', 400, 'Idempotency-Key');
+        if ($actor->role !== 'admin' || app('impersonate')->isImpersonating()) return $this->fail($request, 'FORBIDDEN', 'Only a tenant administrator can start impersonation', 403);
+        $existing = DB::table('user_idempotency_keys')->where('tenant_id', $actor->tenant_id)->where('user_id', $actor->id)->where('key', $key)->where('expires_at', '>', now())->first();
+        if ($existing) {
+            if ($existing->command_path !== $commandPath) return $this->fail($request, 'CONFLICT', 'Idempotency-Key was already used for another command', 409, 'Idempotency-Key');
+            return $this->ok($request, json_decode($existing->response_snapshot_json, true));
+        }
+        $target = DB::table('users')->where('tenant_id', $actor->tenant_id)->where('id', $id)->first();
+        if (!$target) return $this->fail($request, 'NOT_FOUND', 'user not found', 404);
+        if ($target->id === $actor->id || $target->role === 'admin') return $this->fail($request, 'FORBIDDEN', 'This user cannot be impersonated', 403);
+        $from = User::query()->where('id', $actor->id)->firstOrFail();
+        $to = User::query()->where('id', $target->id)->firstOrFail();
+        Auth::guard('web')->login($from);
+        if (!$from->impersonate($to)) return $this->fail($request, 'INTERNAL_ERROR', 'Unable to start impersonation', 500);
+        $data = ['active'=>true, 'impersonator_id'=>(string) $actor->id, 'user'=>$this->userPayload($target)];
+        DB::transaction(function () use ($request, $actor, $target, $key, $commandPath, $data) {
+            DB::table('audit_events')->insert(['id'=>(string) Str::uuid(), 'tenant_id'=>$actor->tenant_id, 'actor_id'=>$actor->id, 'actor_source'=>'user', 'action'=>'impersonation_started', 'entity_type'=>'user', 'entity_id'=>$target->id, 'after_json'=>json_encode(['impersonator_id'=>$actor->id, 'target_id'=>$target->id]), 'request_id'=>$request->attributes->get('request_id'), 'created_at'=>now()]);
+            DB::table('user_idempotency_keys')->insert(['id'=>(string) Str::uuid(), 'tenant_id'=>$actor->tenant_id, 'user_id'=>$actor->id, 'key'=>$key, 'command_path'=>$commandPath, 'request_hash'=>hash('sha256', $commandPath), 'response_status'=>200, 'response_snapshot_json'=>json_encode($data), 'created_at'=>now(), 'expires_at'=>now()->addDay()]);
+        });
+        return $this->ok($request, $data);
+    }
+
+    public function stopImpersonation(Request $request)
+    {
+        $manager = app('impersonate');
+        if (!$manager->isImpersonating()) return $this->fail($request, 'CONFLICT', 'No active impersonation session', 409);
+        $target = $request->attributes->get('principal');
+        $actorId = (string) $manager->getImpersonatorId();
+        $actor = DB::table('users')->where('tenant_id', $target->tenant_id)->where('id', $actorId)->first();
+        if (!$actor || !$manager->leave()) return $this->fail($request, 'INTERNAL_ERROR', 'Unable to stop impersonation', 500);
+        DB::table('audit_events')->insert(['id'=>(string) Str::uuid(), 'tenant_id'=>$actor->tenant_id, 'actor_id'=>$actor->id, 'actor_source'=>'user', 'action'=>'impersonation_stopped', 'entity_type'=>'user', 'entity_id'=>$target->id, 'before_json'=>json_encode(['impersonator_id'=>$actor->id, 'target_id'=>$target->id]), 'request_id'=>$request->attributes->get('request_id'), 'created_at'=>now()]);
+        return $this->ok($request, ['active'=>false, 'user'=>$this->userPayload($actor)]);
+    }
 
     private function userPayload(object $user): array
     {

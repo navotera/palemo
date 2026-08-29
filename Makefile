@@ -27,7 +27,7 @@ export
 PHP ?= php
 COMPOSER ?= composer
 NPM ?= npm
-PHP_PGSQL = $(PHP) -d extension=pdo_pgsql -d extension=pgsql
+PHP_PGSQL = $(PHP) -d extension=pdo_pgsql -d extension=pgsql -d extension=gd -d upload_max_filesize=10M -d post_max_size=12M
 
 .DEFAULT_GOAL := help
 .PHONY: help setup check-tools dev backend frontend migrate-up migrate-down fmt typecheck test build clean

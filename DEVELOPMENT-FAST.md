@@ -10,7 +10,7 @@ If GNU Make is unavailable, run these in separate terminals:
 
 ```powershell
 cd C:\laragon\www\Palemo
-php -d extension=pdo_pgsql -d extension=pgsql -S 127.0.0.1:8080 -t backend/public backend/server.php
+php -d extension=pdo_pgsql -d extension=pgsql -d extension=gd -d upload_max_filesize=10M -d post_max_size=12M -S 127.0.0.1:8080 -t backend/public backend/server.php
 ```
 
 ```powershell

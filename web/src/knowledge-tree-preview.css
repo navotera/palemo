@@ -49,6 +49,54 @@
   color: #2b4134;
   font: 750 1rem Manrope;
 }
+.knowledge-tree-preview-title {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 7px;
+}
+.knowledge-tree-preview-title h2 {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.knowledge-tree-private-icon {
+  width: 16px;
+  height: 16px;
+  color: #7b8980;
+}
+.knowledge-tree-private-icon::after {
+  top: calc(100% + 6px);
+}
+.knowledge-tree-preview-editor {
+  margin-top: 18px;
+}
+.knowledge-tree-preview-editor .knowledge-editor-shell {
+  border: 0;
+  background: transparent;
+}
+.knowledge-tree-preview-editor .knowledge-tiptap-host {
+  border: 0;
+  background: transparent;
+}
+.knowledge-tree-preview-editor .knowledge-editor-shell.is-readonly .knowledge-tiptap-content {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent !important;
+  font-size: 0.7rem;
+}
+.knowledge-tree-preview-editor .knowledge-tiptap-content > :first-child {
+  margin-top: 0;
+}
+.knowledge-tree-preview-loading {
+  min-height: 120px;
+  padding: 20px 0;
+  color: #849188;
+  font-size: 0.65rem;
+}
 
 .knowledge-tree-preview-meta {
   display: flex;
@@ -58,6 +106,40 @@
   margin-top: 14px;
   color: #7d8a82;
   font-size: 0.59rem;
+}
+.knowledge-tree-preview-meta-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+.knowledge-tree-preview-updated {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: help;
+}
+.knowledge-tree-preview-updated svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+.knowledge-tree-preview-detail-button {
+  border: 1px solid #bfd4c6;
+  border-radius: 6px;
+  background: transparent;
+  color: #285f40;
+  padding: 5px 8px;
+  font-size: 0.57rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.knowledge-tree-preview-detail-button:hover {
+  border-color: #7ca78d;
+  background: #edf6f0;
 }
 
 .knowledge-tree-preview-project {
@@ -139,6 +221,11 @@
 .app-shell[data-ui-mode="dark"] .knowledge-tree-preview h2,
 .app-shell[data-ui-mode="dark"] .knowledge-tree-preview article {
   color: #dce4df;
+}
+.app-shell[data-ui-mode="dark"] .knowledge-tree-preview-detail-button {
+  border-color: #4b6552;
+  background: #263329;
+  color: #d7ecdf;
 }
 
 @media (max-width: 900px) {

@@ -13,6 +13,8 @@ import { ExecutiveProjects } from "./ExecutiveProjects";
 import { ProjectCreateForm } from "./ProjectCreateForm";
 import { OrganizationPage } from "./OrganizationPage";
 import { SettingsPage } from "./SettingsPage";
+import { ProjectTemplates } from "./ProjectTemplates";
+import "./notifications.css";
 type User = {
   id: string;
   name: string;
@@ -33,9 +35,12 @@ type Summary = {
   divisions: DivisionPerformanceData[];
 };
 type Envelope<T> = { data: T; meta: { request_id: string }; errors: null };
+type ImpersonationStatus = { active: boolean; impersonator_id: string | null };
 type View =
   | "overview"
   | "projects"
+  | "project-templates"
+  | "project-template-edit"
   | "organization"
   | "operations"
   | "knowledge"
@@ -63,6 +68,8 @@ type WorkspaceTabState = { tabs: WorkspaceTab[]; active_tab_id: string | null };
 const tabLabels: Record<View, string> = {
   overview: "Executive Overview",
   projects: "Project Portfolio",
+  "project-templates": "Project Templates",
+  "project-template-edit": "Edit Project Template",
   organization: "Organization",
   operations: "Operations",
   knowledge: "Knowledge Library",
@@ -83,6 +90,8 @@ type NavIconName =
 const viewIcons: Record<View, NavIconName> = {
   overview: "overview",
   projects: "projects",
+  "project-templates": "projects",
+  "project-template-edit": "projects",
   organization: "organization",
   operations: "operations",
   knowledge: "knowledge",
@@ -161,7 +170,10 @@ export function App() {
   const queryClient = useQueryClient();
   const [view, setView] = useState<View>("overview");
   const [selectedProject, setSelectedProject] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState("");
   const [docsOpen, setDocsOpen] = useState(false);
+  const [portfolioOpen, setPortfolioOpen] = useState(true);
+  const [knowledgeOpen, setKnowledgeOpen] = useState(true);
   const [tabs, setTabs] = useState<WorkspaceTab[]>([
     { id: "overview", view: "overview", label: "Executive Overview" },
   ]);
@@ -171,8 +183,25 @@ export function App() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [draggingTabID, setDraggingTabID] = useState<string | null>(null);
   const [knowledgeFocusMode, setKnowledgeFocusMode] = useState(false);
+  const [knowledgeCollectionRequest, setKnowledgeCollectionRequest] =
+    useState<"category" | "personal">("category");
+  const [knowledgeNavigationKey, setKnowledgeNavigationKey] = useState(0);
+  const [knowledgeBreadcrumbTitle, setKnowledgeBreadcrumbTitle] = useState("");
   const [focusSidebarOpen, setFocusSidebarOpen] = useState(false);
   const [sidebarHidden, setSidebarHidden] = useState(false);
+  useEffect(() => {
+    const projectViews: View[] = [
+      "projects",
+      "project-create",
+      "project-edit",
+      "project-detail",
+      "project-templates",
+      "project-template-edit",
+    ];
+    if (view !== "knowledge") setKnowledgeOpen(false);
+    if (!projectViews.includes(view)) setPortfolioOpen(false);
+    if (view !== "documentation") setDocsOpen(false);
+  }, [view]);
   useEffect(() => {
     if (!knowledgeFocusMode) setFocusSidebarOpen(false);
   }, [knowledgeFocusMode]);
@@ -180,6 +209,15 @@ export function App() {
     queryKey: ["current-user"],
     queryFn: () => api<User>("/api/v1/auth/me"),
     retry: false,
+  });
+  const impersonation = useQuery({
+    queryKey: ["impersonation-status"],
+    queryFn: () => api<ImpersonationStatus>("/api/v1/auth/impersonation"),
+    enabled: user.isSuccess,
+  });
+  const stopImpersonation = useMutation({
+    mutationFn: () => api("/api/v1/auth/impersonation", { method: "DELETE" }),
+    onSuccess: () => window.location.reload(),
   });
   useEffect(() => {
     if (!user.data?.id) return;
@@ -228,8 +266,7 @@ export function App() {
       `palemo-ui-mode:${user.data.id}`,
     );
     if (stored === "dark" || stored === "light") setUiMode(stored);
-    else if (window.matchMedia?.("(prefers-color-scheme: dark)").matches)
-      setUiMode("dark");
+    else setUiMode("light");
   }, [user.data?.id]);
   function toggleUiMode() {
     setUiMode((current) => {
@@ -407,8 +444,39 @@ export function App() {
     openTab("project-detail", { projectID: id });
   const editProject = (id: string) =>
     openTab("project-edit", { projectID: id });
-  const navigate = (next: View) =>
+  const editTemplate = (id: string) => {
+    setSelectedTemplate(id);
+    openTab("project-template-edit");
+  };
+  const navigate = (
+    next: View,
+    requestedKnowledgeCollection: "category" | "personal" = "category",
+  ) => {
+    if (next === "knowledge") {
+      setKnowledgeOpen(true);
+      setKnowledgeCollectionRequest(requestedKnowledgeCollection);
+      setKnowledgeBreadcrumbTitle("");
+      setTabs((current) =>
+        current.map((tab) =>
+          tab.id === activeTabID && tab.view === "knowledge"
+            ? { ...tab, label: "Knowledge Library", knowledgePage: "list" }
+            : tab,
+        ),
+      );
+      const url = new URL(window.location.href);
+      url.searchParams.delete("knowledge");
+      window.history.replaceState(
+        { ...window.history.state, npmsKnowledgeDetail: false },
+        "",
+        url,
+      );
+      setKnowledgeNavigationKey((current) => current + 1);
+    }
     openTab(next, next === "knowledge" ? { knowledgePage: "list" } : undefined);
+  };
+  const navigateKnowledgePersonal = () => {
+    navigate("knowledge", "personal");
+  };
   const openKnowledgeDraft = () => {
     setFocusSidebarOpen(false);
     openTab("knowledge", { knowledgePage: "new" });
@@ -425,6 +493,19 @@ export function App() {
           : tab,
       ),
     );
+  const updateKnowledgeBreadcrumbTitle = (title: string) => {
+    const trimmed = title.trim();
+    setKnowledgeBreadcrumbTitle(trimmed);
+    if (trimmed) {
+      setTabs((current) =>
+        current.map((tab) =>
+          tab.id === activeTabID && tab.view === "knowledge"
+            ? { ...tab, label: trimmed }
+            : tab,
+        ),
+      );
+    }
+  };
 
   const titles: Record<View, [string, string]> = {
     overview: [
@@ -432,6 +513,7 @@ export function App() {
       "Organization performance and management priorities",
     ],
     projects: ["Project portfolio", "Project health across divisions"],
+    "project-templates": ["Templates", "Reusable project structures"],
     organization: ["Organization", "Manage divisions and teams"],
     operations: ["Operational workspace", "SOP and automation tools"],
     knowledge: ["Knowledge Library", ""],
@@ -439,6 +521,7 @@ export function App() {
     settings: ["Settings", "Workspace master data and access"],
     "project-create": ["New project", "Create and assign a project workspace"],
     "project-edit": ["Edit project", "Update project workspace"],
+    "project-template-edit": ["Edit template", "Update reusable project structure"],
     "project-detail": ["Project detail", "Task execution and workflow"],
   };
   const customTheme = generalSettings.data;
@@ -488,8 +571,14 @@ export function App() {
         ? [
             { label: "Workspace", action: () => navigate("overview") },
             { label: "Project Portfolio", action: () => navigate("projects") },
-            { label: "Project Detail" },
-          ]
+          { label: "Project Detail" },
+        ]
+        : view === "project-templates"
+          ? [
+              { label: "Workspace", action: () => navigate("overview") },
+              { label: "Project", action: () => navigate("projects") },
+              { label: "Template" },
+            ]
         : view === "project-create"
           ? [
               { label: "Workspace", action: () => navigate("overview") },
@@ -508,6 +597,12 @@ export function App() {
                 },
                 { label: "New Knowledge" },
               ]
+            : view === "knowledge" && knowledgeBreadcrumbTitle
+              ? [
+                  { label: "Workspace", action: () => navigate("overview") },
+                  { label: "Knowledge Library", action: () => navigate("knowledge") },
+                  { label: knowledgeBreadcrumbTitle },
+                ]
             : [
                 {
                   label: "Workspace",
@@ -536,6 +631,7 @@ export function App() {
         } as React.CSSProperties
       }
     >
+      {impersonation.data?.active && <div className="impersonation-banner" role="status"><span>You are viewing Palemo as another user.</span><button type="button" onClick={() => stopImpersonation.mutate()} disabled={stopImpersonation.isPending}>{stopImpersonation.isPending ? "Returning…" : "Return to my account"}</button></div>}
       <button
         type="button"
         className="focus-sidebar-toggle"
@@ -567,27 +663,49 @@ export function App() {
             <NavIcon name="overview" />
             Executive overview
           </button>
-          <button
-            className={
-              view === "projects" ||
-              view === "project-create" ||
-              view === "project-edit" ||
-              view === "project-detail"
-                ? "nav-item active"
-                : "nav-item"
-            }
-            onClick={() => navigate("projects")}
-          >
-            <NavIcon name="projects" />
-            Project portfolio
-          </button>
-          <button
-            className={view === "knowledge" ? "nav-item active" : "nav-item"}
-            onClick={() => navigate("knowledge")}
-          >
-            <NavIcon name="knowledge" />
-            Knowledge Library
-          </button>
+          <div className="nav-group">
+            <button
+              className={view === "projects" || view === "project-create" || view === "project-edit" || view === "project-detail" || view === "project-templates" ? "nav-item active" : "nav-item"}
+              aria-expanded={portfolioOpen}
+              onClick={() => { setPortfolioOpen(!portfolioOpen); if (!portfolioOpen) navigate("projects"); }}
+            >
+              <NavIcon name="projects" />
+              Project portfolio <b>{portfolioOpen ? "-" : "+"}</b>
+            </button>
+            {portfolioOpen && <div className="nav-submenu">
+              <button className={view === "projects" || view === "project-create" || view === "project-edit" || view === "project-detail" ? "active" : ""} onClick={() => navigate("projects")}>Project List</button>
+              <button className={view === "project-templates" ? "active" : ""} onClick={() => navigate("project-templates")}>Template</button>
+            </div>}
+          </div>
+          <div className="nav-group">
+            <button
+              className={view === "knowledge" ? "nav-item active" : "nav-item"}
+              aria-expanded={knowledgeOpen}
+              onClick={() => {
+                setKnowledgeOpen(!knowledgeOpen);
+                if (!knowledgeOpen) navigate("knowledge");
+              }}
+            >
+              <NavIcon name="knowledge" />
+              Knowledge Library <b>{knowledgeOpen ? "-" : "+"}</b>
+            </button>
+            {knowledgeOpen && (
+              <div className="nav-submenu">
+                <button
+                  className={knowledgeCollectionRequest === "category" ? "active" : ""}
+                  onClick={() => navigate("knowledge")}
+                >
+                  Knowledge List
+                </button>
+                <button
+                  className={knowledgeCollectionRequest === "personal" ? "active" : ""}
+                  onClick={navigateKnowledgePersonal}
+                >
+                  Personal
+                </button>
+              </div>
+            )}
+          </div>
           <button
             className={view === "organization" ? "nav-item active" : "nav-item"}
             onClick={() => navigate("organization")}
@@ -650,16 +768,7 @@ export function App() {
             ))}
           </nav>
           <div className="topbar-actions">
-            <button
-              className="notification-button"
-              type="button"
-              aria-label="Notifications"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
-              </svg>
-              <span className="notification-indicator" />
-            </button>
+            <NotificationTray />
             <div className="user-menu" tabIndex={0}>
               <div className="avatar">{user.data.name.charAt(0)}</div>
               <div>
@@ -807,6 +916,8 @@ export function App() {
             />
           </section>
         )}
+        {view === "project-templates" && <ProjectTemplates onCreate={() => navigate("project-create")} onEdit={editTemplate} />}
+        {view === "project-template-edit" && <section className="project-create-page"><ProjectCreateForm divisions={divisions} templateEditID={selectedTemplate} onCancel={() => navigate("project-templates")} onCreated={() => navigate("project-templates")} /></section>}
         {view === "project-create" && (
           <section className="project-create-page">
             <ProjectCreateForm
@@ -841,7 +952,7 @@ export function App() {
         {view === "knowledge" && (
           <section className="content-grid knowledge-view">
             <KnowledgePanel
-              key={activeTabID}
+              key={`${activeTabID}-${knowledgeNavigationKey}`}
               initialPage={
                 tabs.find((tab) => tab.id === activeTabID)?.knowledgePage ??
                 "list"
@@ -849,6 +960,7 @@ export function App() {
               onOpenNew={openKnowledgeDraft}
               onBackToList={() => navigate("knowledge")}
               onDraftTitleChange={updateKnowledgeDraftTitle}
+              onKnowledgeTitleChange={updateKnowledgeBreadcrumbTitle}
               focusMode={knowledgeFocusMode}
               onFocusModeChange={setKnowledgeFocusMode}
               sourceProjectID={
@@ -858,6 +970,7 @@ export function App() {
               currentUserID={user.data.id}
               currentUserDivisionID={user.data.division_id}
               accessibleDivisionIDs={user.data.division_ids ?? []}
+              initialCollection={knowledgeCollectionRequest}
             />
           </section>
         )}
@@ -916,6 +1029,48 @@ export function App() {
           </>
         )}
       </main>
+    </div>
+  );
+}
+
+type NotificationItem = {
+  id: string;
+  template: string;
+  status: "queued" | "read" | "sent" | "failed";
+  created_at: string;
+  payload: { title?: string; message?: string; url?: string };
+};
+type NotificationResponse = { items: NotificationItem[]; unread_count: number };
+
+function NotificationTray() {
+  const [open, setOpen] = useState(false);
+  const cache = useQueryClient();
+  const notifications = useQuery({
+    queryKey: ["notifications"],
+    queryFn: () => api<NotificationResponse>("/api/v1/notifications"),
+    refetchInterval: 60_000,
+  });
+  const markRead = useMutation({
+    mutationFn: (id: string) => api(`/api/v1/notifications/${id}/read`, { method: "PATCH" }),
+    onSuccess: () => cache.invalidateQueries({ queryKey: ["notifications"] }),
+  });
+  const unread = notifications.data?.unread_count ?? 0;
+  return (
+    <div className="notification-tray">
+      <button className="notification-button" type="button" aria-label="Notifications" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg>
+        {unread > 0 && <span className="notification-indicator" />}
+      </button>
+      {open && <section className="notification-popover" aria-label="Notification list">
+        <header><strong>Notifications</strong><small>{unread ? `${unread} unread` : "All caught up"}</small></header>
+        {notifications.isPending && <p>Loading notifications...</p>}
+        {!notifications.isPending && !notifications.data?.items.length && <p>No notifications yet.</p>}
+        {notifications.data?.items.map((item) => <button type="button" className={`notification-item ${item.status === "queued" ? "unread" : ""}`} key={item.id} onClick={() => item.status === "queued" && markRead.mutate(item.id)}>
+          <strong>{item.payload.title ?? item.template.replaceAll("_", " ")}</strong>
+          <span>{item.payload.message ?? "You have a new NPMS notification."}</span>
+          <time>{new Date(item.created_at).toLocaleString()}</time>
+        </button>)}
+      </section>}
     </div>
   );
 }

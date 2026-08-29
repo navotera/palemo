@@ -57,3 +57,7 @@ Palemo must support Ecopa as an external Identity Provider while retaining Palem
 - Local fallback can only be disabled after a successful Ecopa connection test and at least one mapped Ecopa administrator, preventing tenant lockout.
 - SSO callbacks, login attempts, provisioning, role changes, failures, and fallback use are audited without tokens or secrets.
 - The login screen must discover tenant authentication settings server-side and show Continue with Ecopa plus local login only when permitted.
+
+## Impersonation (2026-08-04)
+
+Tenant administrators may temporarily view the workspace as a non-administrator user for support and diagnosis. The backend enforces the administrator role, same-tenant target lookup, no self-impersonation, and no impersonation of another administrator. Start commands require a tenant/user-scoped `Idempotency-Key`; start and stop actions append audit events with the original administrator and target IDs, request ID, and timestamp. The original session must be restorable only through the authenticated stop action, and the active impersonation state is exposed to the dashboard so the user sees a persistent return control.

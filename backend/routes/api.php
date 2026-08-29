@@ -5,9 +5,11 @@ use App\Http\Controllers\ActivityRealizationController;
 use App\Http\Controllers\ProjectRealizationsController;
 use App\Http\Controllers\ExecutionController;
 use App\Http\Controllers\ProjectWorkflowController;
+use App\Http\Controllers\ProjectTemplateController;
 use App\Http\Controllers\PlatformController;
 use App\Http\Controllers\WorkspaceController;
 use App\Http\Controllers\OrganizationController;
+use App\Http\Controllers\NotificationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -15,11 +17,14 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
     Route::post('/auth/development-session', [AuthController::class, 'developmentSession']);
     Route::post('/integrations/github/webhook', [ExecutionController::class, 'githubWebhook']);
-    Route::middleware('npms')->group(function () {
+    Route::middleware(['npms-session', 'npms'])->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::put('/users/me/profile-image', [AuthController::class, 'updateProfileImage'])->middleware('throttle:10,1');
         Route::get('/users/{id}/profile-image', [AuthController::class, 'profileImage']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
+        Route::get('/auth/impersonation', [AuthController::class, 'impersonationStatus']);
+        Route::post('/auth/impersonation/{id}', [AuthController::class, 'startImpersonation']);
+        Route::delete('/auth/impersonation', [AuthController::class, 'stopImpersonation']);
         Route::get('/dashboard/summary', [WorkspaceController::class, 'summary']);
         Route::get('/divisions', [OrganizationController::class, 'divisions']);
         Route::get('/teams', [OrganizationController::class, 'teams']);
@@ -38,6 +43,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/settings/github-integration', [WorkspaceController::class, 'githubIntegration']);
         Route::put('/settings/github-integration', [WorkspaceController::class, 'updateGithubIntegration']);        Route::get('/settings/notification-delivery', [WorkspaceController::class, 'notificationDelivery']);
         Route::put('/settings/notification-delivery', [WorkspaceController::class, 'updateNotificationDelivery']);
+        Route::post('/settings/notification-delivery/test', [WorkspaceController::class, 'testNotificationDelivery']);
         Route::get('/settings/webhooks', [WorkspaceController::class, 'webhooks']);
         Route::post('/settings/webhooks', [WorkspaceController::class, 'createWebhooks']);
         Route::patch('/settings/webhooks/{id}', [WorkspaceController::class, 'updateWebhook']);
@@ -60,11 +66,19 @@ Route::prefix('v1')->group(function () {
         Route::get('/project-scope-options', [ExecutionController::class, 'projectScopeOptions']);
         Route::get('/projects', [ExecutionController::class, 'projects']);
         Route::post('/projects', [ExecutionController::class, 'createProject']);
+        Route::get('/project-templates', [ProjectTemplateController::class, 'index']);
+        Route::post('/project-templates', [ProjectTemplateController::class, 'store']);
+        Route::get('/project-templates/{id}', [ProjectTemplateController::class, 'show']);
+        Route::patch('/project-templates/{id}', [ProjectTemplateController::class, 'update']);
+        Route::post('/project-templates/{templateId}/projects', [ProjectTemplateController::class, 'createProject']);
         Route::get('/projects/{id}', [ExecutionController::class, 'projectById']);
         Route::get('/projects/{project}/finish-attachments', [ExecutionController::class, 'finishAttachments']);
         Route::post('/projects/{project}/finish-attachments', [ExecutionController::class, 'uploadFinishAttachment']);
         Route::post('/projects/{project}/finish-links', [ExecutionController::class, 'createFinishLink']);
         Route::get('/projects/{project}/finish-attachments/{id}', [ExecutionController::class, 'downloadFinishAttachment']);
+        Route::get('/projects/{project}/cost-attachments', [ExecutionController::class, 'costAttachments']);
+        Route::post('/projects/{project}/cost-attachments', [ExecutionController::class, 'uploadCostAttachmentResized']);
+        Route::get('/projects/{project}/cost-attachments/{id}', [ExecutionController::class, 'downloadCostAttachment']);
         Route::patch('/projects/{id}', [ExecutionController::class, 'updateProject']);
         Route::post('/projects/{id}/github-link', [ExecutionController::class, 'linkGithubRepository']);
         Route::post('/projects/{id}/submit-review', [ProjectWorkflowController::class, 'submitReview']);
@@ -95,10 +109,12 @@ Route::prefix('v1')->group(function () {
         Route::get('/knowledge/media/{id}', [PlatformController::class,'knowledgeMedia'])->whereUuid('id');
         Route::get('/knowledge/drafts', [PlatformController::class,'knowledgeDrafts']);
         Route::get('/knowledge/{kind}', [PlatformController::class,'knowledge']);
+        Route::delete('/knowledge-versions/{id}', [PlatformController::class,'removeKnowledgeVersion'])->whereUuid('id');
         Route::post('/knowledge/{kind}', [PlatformController::class,'createKnowledge']);
         Route::patch('/knowledge/{kind}/{id}', [PlatformController::class,'updateKnowledge']);
         Route::get('/search', fn(Request $r) => envelope($r, []));
-        Route::get('/notifications', fn(Request $r) => envelope($r, []));
+        Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::patch('/notifications/{id}/read', [NotificationController::class, 'read']);
         Route::get('/api-clients', [PlatformController::class,'apiClients']);
         Route::post('/api-clients', [PlatformController::class,'createApiClient']);
         Route::get('/api-clients/usage', [PlatformController::class,'usage']);
@@ -124,4 +140,3 @@ if (!function_exists('envelope')) {
         return response()->json(['data'=>$data,'meta'=>['request_id'=>$request->attributes->get('request_id')],'errors'=>null],$status);
     }
 }
-

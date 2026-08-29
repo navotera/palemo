@@ -4,10 +4,16 @@
 }
 
 .knowledge-editor-shell.is-compact .knowledge-tiptap-content{min-height:320px;padding:20px 22px 48px}.knowledge-editor-shell.is-readonly .tiptap-knowledge-toolbar,.knowledge-editor-shell.is-readonly .knowledge-tiptap-host{pointer-events:none}.knowledge-editor-shell.is-readonly .tiptap-knowledge-toolbar{opacity:.58}.knowledge-editor-shell.is-readonly .knowledge-tiptap-content{background:#f6f8f6}
+.knowledge-editor-shell.is-toolbar-hidden .tiptap-knowledge-toolbar{display:none}
 
 .knowledge-editor-shell.is-compact .tiptap-knowledge-toolbar svg {
   width: 14px;
   height: 14px;
+}
+
+.knowledge-editor-shell.is-compact .tiptap-knowledge-toolbar {
+  flex-wrap: nowrap;
+  align-items: center;
 }
 
 .knowledge-editor-shell.is-compact .tiptap-knowledge-toolbar button:is(
@@ -93,6 +99,23 @@
   width: auto;
   border: 1px solid #dbe3dd;
   background: #fff;
+}
+
+.tiptap-knowledge-toolbar > .tiptap-code-language-picker {
+  align-self: center;
+  box-sizing: border-box;
+  height: 32px;
+  width: 88px;
+  min-width: 88px;
+  max-width: 88px;
+  min-height: 32px;
+  margin: 0;
+  padding: 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 30px;
+  vertical-align: middle;
 }
 
 .tiptap-color-control {
@@ -402,7 +425,8 @@
   min-height: 560px;
   padding: 26px 30px 90px;
   color: #304037;
-  font: 400 16px/1.75 Arial, sans-serif;
+  font: 400 11pt/1.75 Arial, sans-serif;
+  text-align: justify;
   font-synthesis: style;
   outline: none;
 }
@@ -424,9 +448,9 @@
   line-height: 1.25;
 }
 
-.knowledge-tiptap-content h1 { font-size: 1.75rem; }
-.knowledge-tiptap-content h2 { font-size: 1.35rem; }
-.knowledge-tiptap-content h3 { font-size: 1.08rem; }
+.knowledge-tiptap-content h1 { font-size: calc(1.75rem - .5px); }
+.knowledge-tiptap-content h2 { font-size: calc(1.35rem - .5px); }
+.knowledge-tiptap-content h3 { font-size: calc(1.08rem - .5px); }
 .knowledge-tiptap-content :is(em, i, .knowledge-italic) {
   font-style: italic !important;
 }
@@ -672,7 +696,7 @@
   padding: 48px 18px 18px;
   background: transparent;
   color: #25352c;
-  font: 13px/1.65 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font: 12.5px/1.65 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   white-space: pre;
 }
 
@@ -698,19 +722,48 @@
 }
 
 .tiptap-code-actions select {
-  max-width: 130px;
+  position: absolute;
+  z-index: 3;
+  top: 1px;
+  left: 3px;
+  width: 104px;
+  min-width: 104px;
+  max-width: 104px;
   height: 26px;
+  flex: none;
+  opacity: 0;
   border: 0;
   padding: 0 4px;
   background: transparent;
-  color: #4b5c52;
+  color: transparent !important;
   font-size: 0.62rem;
   font-weight: 750;
   outline: none;
   cursor: pointer;
 }
 
+.tiptap-code-language-label {
+  display: inline-block;
+  position: relative;
+  z-index: 1;
+  max-width: 92px;
+  overflow: hidden;
+  color: #4b5c52;
+  font-size: 0.62rem;
+  font-weight: 750;
+  line-height: 26px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tiptap-code-actions select option {
+  color: #25352c;
+  background: #fff;
+}
+
 .tiptap-code-actions button {
+  position: relative;
+  z-index: 4;
   display: inline-grid;
   width: 30px;
   height: 26px;
@@ -892,7 +945,9 @@
 .app-shell[data-ui-mode="dark"] .tiptap-image-options strong { color: #dce5df; }
 .app-shell[data-ui-mode="dark"] .tiptap-image-options button { border-color: #465049; background: #2b342e; color: #dce5df; }
 .app-shell[data-ui-mode="dark"] .tiptap-image-options button.insert-image { background: var(--tone-primary, #397c5b); color: #fff; }
-.app-shell[data-ui-mode="dark"] .tiptap-code-actions select { color: #dce5df; }
+.app-shell[data-ui-mode="dark"] .tiptap-code-actions select { color: transparent !important; }
+.app-shell[data-ui-mode="dark"] .tiptap-code-language-label { color: #dce5df; }
+.app-shell[data-ui-mode="dark"] .tiptap-code-actions select option { color: #e2e9e4; background: #202722; }
 
 @media (max-width: 900px) {
   .knowledge-editor-loading,

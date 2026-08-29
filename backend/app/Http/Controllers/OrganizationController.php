@@ -44,7 +44,10 @@ class OrganizationController extends Controller
 
     private function teamData(string $tenant): array
     {
-        return DB::table('teams')->where('tenant_id', $tenant)->orderBy('name')->get()->map(function ($team) use ($tenant) {
+        $simulationTeamIDs = DB::table('simulation_records')->where('tenant_id', $tenant)->where('entity_type', 'teams')->pluck('entity_id');
+        $query = DB::table('teams')->where('tenant_id', $tenant);
+        if ($simulationTeamIDs->isNotEmpty()) $query->whereNotIn('id', $simulationTeamIDs);
+        return $query->orderBy('name')->get()->map(function ($team) use ($tenant) {
             return [
                 'id' => $team->id,
                 'division_id' => $team->division_id,
@@ -61,7 +64,10 @@ class OrganizationController extends Controller
     {
         $tenant = $this->tenant($request);
         $teams = collect($this->teamData($tenant));
-        $items = DB::table('divisions')->where('tenant_id', $tenant)->orderBy('name')->get()->map(function ($division) use ($tenant, $teams) {
+        $simulationDivisionIDs = DB::table('simulation_records')->where('tenant_id', $tenant)->where('entity_type', 'divisions')->pluck('entity_id');
+        $divisionQuery = DB::table('divisions')->where('tenant_id', $tenant);
+        if ($simulationDivisionIDs->isNotEmpty()) $divisionQuery->whereNotIn('id', $simulationDivisionIDs);
+        $items = $divisionQuery->orderBy('name')->get()->map(function ($division) use ($tenant, $teams) {
             $linkedTeams = $teams->filter(fn (array $team) => in_array($division->id, $team['division_ids'], true))->values()->all();
             return [
                 'id' => $division->id,

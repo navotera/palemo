@@ -283,6 +283,25 @@ to the authenticated tenant. Wiki, meeting, and decision records expose
 `related_project_id`; lessons learned expose the same API field backed by their existing
 `project_id` column. The relation remains available in Knowledge list/detail responses.
 
+Knowledge create and update accept `accessible_division_ids`, `accessible_team_ids`, and
+`accessible_user_ids`, each bounded and tenant-validated. Users can read a record when they
+are the author or match one of the selected sharing targets; empty arrays preserve organization-wide access.
+
+`GET /api/v1/knowledge/{kind}?scope=personal` returns only published Knowledge authored by
+the authenticated user in the active tenant where all division, team, and user sharing arrays
+are empty. It is a tenant-scoped personal library filter, not a client-side visibility rule.
+
+`PATCH /api/v1/knowledge/{kind}/{id}` accepts optional `create_version: true`. A normal
+create/update maintains at most one immutable automatic baseline per database calendar date
+for that tenant-scoped Knowledge item. The baseline captures state before the first update
+of an existing item; a newly created item uses its initial state. When `create_version=true`,
+the resulting state is also stored as a manual snapshot; this explicit snapshot is not
+subject to the daily automatic limit. A content reduction greater than 40% from a baseline
+of at least 200 characters creates a deduplicated 24-hour recovery snapshot when the daily
+baseline already exists.
+Version History reads `knowledge_versions`, never raw `audit_events`. Snapshot removal is a
+tenant-scoped soft delete and emits an audit event.
+
 ### Knowledge media
 ```
 POST /api/v1/knowledge/media       multipart field `image`; requires Idempotency-Key

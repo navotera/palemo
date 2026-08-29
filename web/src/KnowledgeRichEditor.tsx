@@ -350,6 +350,7 @@ function detectCodeLanguage(source: string): string | null {
 
 function CodeBlockNodeView({ node, updateAttributes }: NodeViewProps) {
   const language = node.attrs.language || "plaintext";
+  const languageLabel = CODE_LANGUAGES.find(([value]) => value === language)?.[1] || language;
   const [copied, setCopied] = useState(false);
   async function copyCode() {
     try {
@@ -363,6 +364,7 @@ function CodeBlockNodeView({ node, updateAttributes }: NodeViewProps) {
   return (
     <NodeViewWrapper className="tiptap-code-block" data-language={language}>
       <div className="tiptap-code-actions" contentEditable={false}>
+        <span className="tiptap-code-language-label" aria-hidden="true">{languageLabel}</span>
         <select
           aria-label="Code language"
           value={language}
@@ -496,11 +498,13 @@ export const KnowledgeRichEditor = forwardRef<
     readOnly?: boolean;
     ariaLabel?: string;
     compact?: boolean;
+    hideToolbar?: boolean;
     changeDebounceMs?: number;
   }
->(function KnowledgeRichEditor({ value, onChange, onRecommendExternal, readOnly=false, ariaLabel="Knowledge visual editor", compact=false, changeDebounceMs=CHANGE_DEBOUNCE_MS }, ref) {
+>(function KnowledgeRichEditor({ value, onChange, onRecommendExternal, readOnly=false, ariaLabel="Knowledge visual editor", compact=false, hideToolbar=false, changeDebounceMs=CHANGE_DEBOUNCE_MS }, ref) {
   const changeTimer = useRef<number | null>(null);
   const detectionTimer = useRef<number | null>(null);
+  const headingPickerRef = useRef<HTMLDivElement>(null);
   const colorPickerRef = useRef<HTMLDivElement>(null);
   const bubbleSelectionRef = useRef<{ from: number; to: number } | null>(null);
   const nativeColorPickerActiveRef = useRef(false);
@@ -519,6 +523,7 @@ export const KnowledgeRichEditor = forwardRef<
   const [imageUrl, setImageUrl] = useState("");
   const [imageAlt, setImageAlt] = useState("");
   const [imageError, setImageError] = useState("");
+  const [codeLanguage, setCodeLanguage] = useState("");
   const [clipboardUpload, setClipboardUpload] = useState<"idle" | "uploading">("idle");
   const [clipboardError, setClipboardError] = useState("");
   const [showLimitWarning, setShowLimitWarning] = useState(false);
@@ -683,6 +688,22 @@ export const KnowledgeRichEditor = forwardRef<
   }, [editor]);
 
   useEffect(() => {
+    if (!headingMenu) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!headingPickerRef.current?.contains(event.target as Node)) setHeadingMenu(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setHeadingMenu(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer, true);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer, true);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [headingMenu]);
+
+  useEffect(() => {
     if (!colorMenu) return;
     const closeOnOutsidePointer = (event: PointerEvent) => {
       if (!colorPickerRef.current?.contains(event.target as Node)) setColorMenu(false);
@@ -791,9 +812,9 @@ export const KnowledgeRichEditor = forwardRef<
   };
 
   return (
-    <div className={`knowledge-editor-shell tiptap-knowledge-editor${compact?" is-compact":""}${readOnly?" is-readonly":""}`}>
+    <div className={`knowledge-editor-shell tiptap-knowledge-editor${compact?" is-compact":""}${readOnly?" is-readonly":""}${hideToolbar?" is-toolbar-hidden":""}`}>
       <div className="tiptap-knowledge-toolbar" role="toolbar" aria-label="Text formatting">
-        <div className="selection-heading-picker">
+        <div className="selection-heading-picker" ref={headingPickerRef}>
           <button
             type="button"
             title={activeHeadingLevel ? `Heading ${activeHeadingLevel}` : "Paragraph / heading"}
@@ -876,14 +897,16 @@ export const KnowledgeRichEditor = forwardRef<
           )}
         </div>
         <select
+          className="tiptap-code-language-picker"
           aria-label="Insert code block language"
-          defaultValue=""
+          value={codeLanguage}
           onChange={(event) => {
-            editor.chain().focus().setCodeBlock({ language: event.target.value }).run();
-            event.target.value = "";
+            const language = event.target.value;
+            setCodeLanguage(language);
+            editor.chain().focus().setCodeBlock({ language }).run();
           }}
         >
-          <option value="" disabled>⌨ Code</option>
+          <option value="" disabled>Code</option>
           {CODE_LANGUAGES.map(([language, label]) => (
             <option value={language} key={language}>{label}</option>
           ))}
