@@ -10,6 +10,8 @@ type Project = {
   display_number?: number | null;
   name: string;
   status: string;
+  updated_at?: string;
+  parent_project_id?: string | null;
   project_type?: string;
   metadata?: Record<string, unknown>;
   reviewer_ids?: string[];
@@ -57,12 +59,14 @@ export function ExecutionWorkspace({
   projectID,
   onBack,
   onEdit,
+  onOpenProject,
   onCreateKnowledge,
 }: {
   teamID: string;
   projectID?: string;
   onBack?: () => void;
   onEdit?: () => void;
+  onOpenProject?: (projectID: string) => void;
   onCreateKnowledge?: (projectID: string) => void;
 }) {
   const queryClient = useQueryClient();
@@ -72,6 +76,16 @@ export function ExecutionWorkspace({
     queryFn: () => api<Project[]>("/api/v1/projects"),
   });
   const current = projects.data?.find((project) => project.id === selected);
+  const parentProject = useMemo(
+    () => current?.parent_project_id
+      ? (projects.data ?? []).find((project) => project.id === current.parent_project_id)
+      : undefined,
+    [current?.parent_project_id, projects.data],
+  );
+  const childProjects = useMemo(
+    () => (projects.data ?? []).filter((project) => project.parent_project_id === selected),
+    [projects.data, selected],
+  );
   const users = useQuery({
     queryKey: ["users"],
     queryFn: () => api<DirectoryUser[]>("/api/v1/users"),
@@ -225,23 +239,35 @@ export function ExecutionWorkspace({
           <button className="back-button" onClick={onBack}>
             ← Back to project summary
           </button>
-          <div className="project-detail-identity">
-            <span className="eyebrow">Project detail</span>
-            {current && (
-              <span className="project-detail-id">
-                {current.display_number != null
-                  ? `#${String(current.display_number).padStart(2, "0")}`
-                  : `ID ${current.id.slice(0, 8)}`}
-              </span>
-            )}
-          </div>
           <h1>{current?.name ?? "Project activities"}</h1>
-          {current && (
-            <p className="detail-context">Shared project activity planner</p>
+          {parentProject && (
+            <p className="parent-project-context">
+              Parent Project: {" "}
+              <button
+                type="button"
+                onClick={() => onOpenProject?.(parentProject.id)}
+              >
+                {parentProject.name}
+              </button>
+            </p>
+          )}
+          {current && childProjects.length > 0 && (
+              <button
+                type="button"
+                className="child-projects-link"
+                onClick={() => document.getElementById("child-projects-section")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              >
+                {childProjects.length} sub project{childProjects.length === 1 ? "" : "s"}
+              </button>
           )}
         </div>
         {current && (
           <div className="project-detail-actions">
+            <span className="project-detail-id">
+              {current.display_number != null
+                ? `#${String(current.display_number).padStart(2, "0")}`
+                : `ID ${current.id.slice(0, 8)}`}
+            </span>
             <ProjectStatusBadge status={current.status} />
             <button
               type="button"
@@ -260,6 +286,43 @@ export function ExecutionWorkspace({
       </header>
       {selected && (
         <>
+          {!!childProjects.length && (
+            <section id="child-projects-section" className="child-projects-panel" aria-labelledby="child-projects-title">
+              <div className="child-projects-heading">
+                <div>
+                  <h2 id="child-projects-title">Sub projects</h2>
+                </div>
+                <small>{childProjects.length} sub project{childProjects.length === 1 ? "" : "s"}</small>
+              </div>
+              <div className="child-projects-table">
+                <div className="child-project-row child-project-header">
+                  <span>Project name</span>
+                  <span>Last activity</span>
+                  <span>Overdue date</span>
+                  <span>Status</span>
+                </div>
+                {childProjects.map((project) => {
+                  const complete = project.status === "done" || project.status === "archived";
+                  const finishDate = typeof project.metadata?.finish_date === "string" ? project.metadata.finish_date : "";
+                  const overdue = !complete && finishDate && new Date(`${finishDate}T23:59:59`).getTime() < Date.now();
+                  return (
+                    <button
+                      type="button"
+                      className="child-project-row child-project-item"
+                      key={project.id}
+                      onClick={() => onOpenProject?.(project.id)}
+                      aria-label={`Open sub project ${project.name}`}
+                    >
+                      <strong>{project.display_number != null ? `#${String(project.display_number).padStart(2, "0")} ` : ""}{project.name}</strong>
+                      <time dateTime={project.updated_at}>{project.updated_at ? new Date(project.updated_at).toLocaleDateString() : "—"}</time>
+                      <time className={overdue ? "child-project-overdue" : ""} dateTime={overdue ? finishDate : undefined}>{overdue ? new Date(`${finishDate}T00:00:00`).toLocaleDateString() : "—"}</time>
+                      <span className={`child-project-status ${complete ? "complete" : "incomplete"}`}>{complete ? "Complete" : "Not complete"}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
           <aside className="project-detail-sidebar">
             <div className="project-review-gate">
               <div>

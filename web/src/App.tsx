@@ -440,8 +440,17 @@ export function App() {
       return next;
     });
   }
-  const openProject = (id: string) =>
+  const openProject = (id: string) => {
     openTab("project-detail", { projectID: id });
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      document.querySelector<HTMLElement>(".workspace")?.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: "auto",
+      });
+    });
+  };
   const editProject = (id: string) =>
     openTab("project-edit", { projectID: id });
   const editTemplate = (id: string) => {
@@ -944,6 +953,7 @@ export function App() {
               projectID={selectedProject}
               onBack={() => navigate("projects")}
               onEdit={() => editProject(selectedProject)}
+              onOpenProject={openProject}
               onCreateKnowledge={openProjectKnowledgeDraft}
             />
           </section>

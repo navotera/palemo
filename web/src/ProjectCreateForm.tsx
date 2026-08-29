@@ -76,6 +76,7 @@ type KnowledgePage = {
 };
 type Envelope<T> = { data: T; errors: null | Array<{ message: string }> };
 type ExistingProject = { id: string; name: string; tags?: string[]; created_at?: string; status?: string };
+type WorkspaceTeam = { id: string; name: string; division_id?: string; division_ids?: string[] };
 type ProjectTemplate = {
   id: string;
   name: string;
@@ -223,12 +224,28 @@ export function ProjectCreateForm({
       })),
     );
   }, [editing, selectedTemplate.data]);
-  const teams = divisions.flatMap((division) =>
-    (division.teams ?? []).map((team) => ({
-      ...team,
-      divisionName: division.name,
-    })),
-  );
+  const workspaceTeams = useQuery({
+    queryKey: ["teams"],
+    queryFn: () => api<WorkspaceTeam[]>("/api/v1/teams"),
+  });
+  const teams = useMemo<Array<WorkspaceTeam & { divisionName: string }>>(() => {
+    if (workspaceTeams.data?.length) {
+      return workspaceTeams.data.map((team) => ({
+        ...team,
+        divisionName:
+          divisions.find((division) =>
+            (team.division_ids ?? [team.division_id]).includes(division.id),
+          )?.name ?? "Organization",
+      }));
+    }
+    return divisions.flatMap((division) =>
+      (division.teams ?? []).map((team) => ({
+        ...team,
+        division_ids: [division.id],
+        divisionName: division.name,
+      })),
+    );
+  }, [divisions, workspaceTeams.data]);
   const users = useQuery({
     queryKey: ["users"],
     queryFn: () => api<User[]>("/api/v1/users"),
@@ -360,14 +377,17 @@ export function ProjectCreateForm({
     ?.slice(5);
   const teamID =
     selectedTeamScope ??
-    divisions.find(
-      (division) =>
-        projectScopes.includes(`division:${division.id}`) &&
-        !!division.teams?.length,
-    )?.teams[0].id ??
+    teams.find((team) =>
+      projectScopes.some(
+        (scope) =>
+          scope.startsWith("division:") &&
+          (team.division_ids ?? [team.division_id]).includes(scope.slice(9)),
+      ),
+    )?.id ??
     (users.data ?? []).find(
       (user) => !!user.team_id && projectScopes.includes(`user:${user.id}`),
     )?.team_id ??
+    currentUser.data?.team_id ??
     "";
   const explicitMemberIDs = projectScopes
     .filter((value) => value.startsWith("user:"))
@@ -402,7 +422,7 @@ export function ProjectCreateForm({
     return (existingProjects.data ?? [])
       .filter((project) => project.id !== projectID)
       .filter((project) => !term || project.name.toLocaleLowerCase().includes(term))
-      .slice(0, 8);
+      .slice(0, 5);
   }, [existingProjects.data, parentProjectSearch, projectID]);
   const missingRequirements = [
     ...(!name.trim() ? ["Project name"] : []),

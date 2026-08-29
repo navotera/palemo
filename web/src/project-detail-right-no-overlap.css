@@ -30,6 +30,15 @@
   padding:24px 28px 20px;
   border-bottom:1px solid #e1e9e3
  }
+ .project-detail-shell .execution-panel::after{
+  content:"";
+  position:absolute;
+  top:146px;
+  bottom:0;
+  left:80%;
+  border-left:1px solid #e1e9e3;
+  pointer-events:none
+ }
  .project-detail-shell .detail-activity-builder{
   display:block;
   grid-column:1;
@@ -41,7 +50,6 @@
   margin:0;
   padding:28px 34px 34px;
   border:0;
-  border-right:1px solid #e1e9e3;
   border-radius:0
  }
  .project-detail-shell .project-detail-sidebar{
@@ -78,6 +86,7 @@
   background:#f7faf8;
   align-self:start
  }
+ .app-shell[data-ui-mode='dark'] .project-detail-shell .execution-panel::after{border-color:#3c473f}
  .project-detail-shell .project-review-gate{
   align-items:stretch;
   flex-direction:column
@@ -87,4 +96,27 @@
   padding:20px 22px 24px;
   border-top:1px solid #e1e9e3
  }
+}
+
+@media (min-width:901px){
+ .project-detail-shell .child-projects-panel{border-top:0;border-right:0;padding-right:0}
+}
+
+.project-detail-shell .child-project-item{
+ border:0;
+ border-top:1px solid #edf1ed;
+ background:transparent;
+ color:inherit;
+ font:inherit;
+ text-align:left;
+ cursor:pointer
+}
+.project-detail-shell .child-project-item:hover{background:#f5f8f5}
+.app-shell[data-ui-mode='dark'] .project-detail-shell .child-project-item{border-color:#303a33}
+.app-shell[data-ui-mode='dark'] .project-detail-shell .child-project-item:hover{background:#2b352e}
+
+.project-detail-shell .child-projects-panel{border-top:0!important}
+.project-detail-shell .child-project-row{box-sizing:border-box;width:100%}
+@media (min-width:801px){
+ .project-detail-shell .child-project-item{display:grid;grid-template-columns:minmax(220px,1.5fr) minmax(120px,.8fr) minmax(120px,.8fr) minmax(110px,.7fr);align-items:center;gap:14px;padding:11px 12px}
 }

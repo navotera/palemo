@@ -1,5 +1,5 @@
 import { ExecutionWorkspace as LegacyExecutionWorkspace } from "./ExecutionWorkspaceLegacy";
-import { ProjectActivityRealization } from "./ProjectActivityRealization";
+import { ProjectInformationTabs } from "./ProjectInformationTabs";
 import "./project-activity-realization.css";
 import "./restore-activity-modes.css";
 import "./project-detail-layout.css";
@@ -24,12 +24,13 @@ type Props = {
   projectID?: string;
   onBack?: () => void;
   onEdit?: () => void;
+  onOpenProject?: (projectID: string) => void;
   onCreateKnowledge?: (projectID: string) => void;
 };
 
 export function ExecutionWorkspace(props: Props) {
   return <div className="project-detail-shell">
     <LegacyExecutionWorkspace {...props} />
-    {props.projectID && <ProjectActivityRealization projectID={props.projectID} />}
+    {props.projectID && <ProjectInformationTabs projectID={props.projectID} />}
   </div>;
 }
